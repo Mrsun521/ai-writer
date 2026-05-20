@@ -1,17 +1,13 @@
-name = "ai-writer-api"
-type = "javascript"
-account_id = ""
+name = "ai-writer"
+main = "index.js"
+compatibility_date = "2026-05-20"
 workers_dev = true
-route = ""
-zone_id = ""
 
 [vars]
 DEEPSEEK_ENDPOINT = "https://api.deepseek.com/v1/chat/completions"
 MODEL = "deepseek-chat"
 FREE_TRIALS = "10"
 
-[kv-namespaces]
-{ binding = "USAGE", id = "" }
-
-[env.production]
-vars = { ENVIRONMENT = "production" }
+[[kv_namespaces]]
+binding = "USAGE"
+id = "3a8286274eec4dc9a2ae2e29b978c717"

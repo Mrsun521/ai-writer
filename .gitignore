@@ -1,3 +1,8 @@
 node_modules/
 .env
 .wrangler/
+__pycache__/
+*.dev.vars
+playwright-report/
+.playwright-mcp/
+

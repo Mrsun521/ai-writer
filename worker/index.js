@@ -7,6 +7,7 @@ import {
   canUse,
   addPaid,
 } from "./usage.js";
+import { STATIC_FILES } from "./static.js";
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -83,6 +84,34 @@ async function callDeepSeek(messages, env) {
     throw new Error("DeepSeek 返回了空结果");
   }
   return content;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Static file serving                                               */
+/* ------------------------------------------------------------------ */
+
+const CONTENT_TYPES = {
+  ".html": "text/html;charset=utf-8",
+  ".css": "text/css;charset=utf-8",
+  ".js": "application/javascript;charset=utf-8",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".svg": "image/svg+xml",
+};
+
+function serveStatic(path) {
+  // Normalize: strip trailing slash
+  const key = path === "/" ? "/" : path.replace(/\/$/, "");
+  const content = STATIC_FILES[key];
+  if (!content) return null;
+
+  const ext = key.match(/\.\w+$/) ? key.match(/\.\w+$/)[0] : ".html";
+  const contentType = CONTENT_TYPES[ext] || "text/html;charset=utf-8";
+
+  return new Response(content, {
+    status: 200,
+    headers: { "content-type": contentType },
+  });
 }
 
 /* ------------------------------------------------------------------ */
@@ -221,7 +250,12 @@ export default {
           break;
 
         default:
-          response = error("Not Found", 404);
+          // Serve static pages (SPA-style routing for tools)
+          response = serveStatic(path);
+          if (!response) {
+            // Try removing /tools/ prefix for direct page access
+            response = serveStatic("/tools" + path) || serveStatic("/");
+          }
       }
     } catch (e) {
       response = error(`服务器内部错误: ${e.message}`, 500);
