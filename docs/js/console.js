@@ -62,11 +62,11 @@ const STORAGE_KEY = 'console_state';
 let consoleState = {
   apiKeys: [],
   transactions: [],
-  balance: 99.50,
-  totalCalls: 8956,
-  totalTokens: 18500000,
-  todayCalls: 128,
-  todayTokens: 285000,
+  balance: 0,
+  totalCalls: 0,
+  totalTokens: 0,
+  todayCalls: 0,
+  todayTokens: 0,
 };
 
 function saveConsoleState() {
@@ -88,7 +88,7 @@ function loadConsoleState() {
       const data = JSON.parse(raw);
       consoleState.apiKeys = data.apiKeys || [];
       consoleState.transactions = data.transactions || [];
-      consoleState.balance = data.balance ?? 99.50;
+      consoleState.balance = data.balance ?? 0;
     } else {
       consoleState.apiKeys = JSON.parse(JSON.stringify(INITIAL_KEYS));
       consoleState.transactions = JSON.parse(JSON.stringify(INITIAL_TRANSACTIONS));
