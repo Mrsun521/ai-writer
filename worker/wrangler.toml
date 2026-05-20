@@ -1,0 +1,17 @@
+name = "ai-writer-api"
+type = "javascript"
+account_id = ""
+workers_dev = true
+route = ""
+zone_id = ""
+
+[vars]
+DEEPSEEK_ENDPOINT = "https://api.deepseek.com/v1/chat/completions"
+MODEL = "deepseek-chat"
+FREE_TRIALS = "10"
+
+[kv-namespaces]
+{ binding = "USAGE", id = "" }
+
+[env.production]
+vars = { ENVIRONMENT = "production" }

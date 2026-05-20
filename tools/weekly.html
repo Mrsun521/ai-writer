@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>周报生成器 - AI 写作助手</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-inner">
+      <a href="/" class="navbar-logo">AI 写作助手</a>
+      <ul class="navbar-links">
+        <li><a href="/">首页</a></li>
+        <li><a href="/tools/weekly.html">工具</a></li>
+        <li><a href="/pricing.html">价格</a></li>
+      </ul>
+      <div class="navbar-usage">
+        <span class="usage-badge">剩余 10 次</span>
+      </div>
+    </div>
+  </nav>
+
+  <main class="main-content">
+    <div class="container">
+      <div style="padding: 24px 0 0;">
+        <h1 style="font-size: 28px; font-weight: 800; color: var(--gray-900);">周报生成器</h1>
+        <p style="color: var(--gray-500); margin-top: 4px;">输入本周工作内容，一键生成专业周报</p>
+      </div>
+
+      <div class="tool-layout">
+        <div class="tool-section">
+          <h2>输入信息</h2>
+          <div class="form-group">
+            <label for="content">本周完成的工作内容</label>
+            <textarea id="content" data-param="content" placeholder="本周完成的工作内容...&#10;例如：&#10;1. 完成了用户管理模块的开发&#10;2. 修复了3个线上bug&#10;3. 参加了产品需求评审会议"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="highlights">本周亮点</label>
+            <input id="highlights" data-param="highlights" placeholder="例如：性能优化提升 30%">
+          </div>
+          <div class="form-group">
+            <label for="nextPlan">下周计划</label>
+            <input id="nextPlan" data-param="nextPlan" placeholder="例如：开始订单系统的开发">
+          </div>
+          <button id="generateBtn" class="btn btn-primary btn-block btn-lg" data-type="weekly">生成</button>
+        </div>
+
+        <div class="tool-section">
+          <div class="output-header">
+            <h2>生成结果</h2>
+            <button id="copyBtn" class="copy-btn">复制文案</button>
+          </div>
+          <div id="outputArea" class="output-area"></div>
+          <p style="font-size: 13px; color: var(--gray-400);">每次生成消耗 1 次免费次数</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; 2026 AI 写作助手. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script src="../js/api.js"></script>
+  <script src="../js/app.js"></script>
+</body>
+</html>
