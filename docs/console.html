@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>开发者控制台 - AI 聚合平台</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    :root {
+      --primary: #6366F1;
+      --primary-hover: #4F46E5;
+      --primary-light: #EEF2FF;
+    }
+
+    html, body { height: 100%; overflow: hidden; }
+    body { background: var(--gray-50); }
+
+    /* ---------- Console Layout ---------- */
+    .console-layout {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    /* Header */
+    .pg-header {
+      display: flex;
+      align-items: center;
+      height: 56px;
+      padding: 0 20px;
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--gray-200);
+      flex-shrink: 0;
+      z-index: 50;
+    }
+    .pg-logo {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--primary);
+      text-decoration: none;
+      margin-right: 32px;
+    }
+    .pg-logo:hover { color: var(--primary-hover); }
+    .pg-nav { display: flex; gap: 24px; }
+    .pg-nav a {
+      text-decoration: none;
+      color: var(--gray-500);
+      font-size: 14px;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+    .pg-nav a:hover { color: var(--gray-700); }
+    .pg-nav a.active { color: var(--primary); font-weight: 600; }
+
+    .header-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .sidebar-toggle {
+      display: none;
+      background: none;
+      border: none;
+      font-size: 22px;
+      color: var(--gray-600);
+      cursor: pointer;
+      padding: 4px;
+    }
+    .header-badge {
+      font-size: 12px;
+      background: var(--primary-light);
+      color: var(--primary);
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-weight: 600;
+    }
+
+    /* ---------- Console Body ---------- */
+    .console-body {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ---------- Sidebar ---------- */
+    .console-sidebar {
+      width: 220px;
+      background: var(--white);
+      border-right: 1px solid var(--gray-200);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      overflow-y: auto;
+    }
+    .sidebar-section { padding: 16px 12px; }
+    .sidebar-section h4 {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--gray-400);
+      margin-bottom: 8px;
+      padding: 0 8px;
+    }
+    .console-nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      color: var(--gray-600);
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.15s;
+      font-family: inherit;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+    }
+    .console-nav-item:hover { background: var(--gray-50); color: var(--gray-800); }
+    .console-nav-item.active { background: var(--primary-light); color: var(--primary); font-weight: 600; }
+    .console-nav-item .nav-icon { font-size: 18px; width: 24px; text-align: center; }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 16px 12px;
+      border-top: 1px solid var(--gray-100);
+    }
+    .sidebar-balance {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--gray-50);
+      border-radius: var(--radius-sm);
+    }
+    .sidebar-balance .label { font-size: 12px; color: var(--gray-400); }
+    .sidebar-balance .amount { font-size: 16px; font-weight: 700; color: var(--primary); }
+
+    /* ---------- Content ---------- */
+    .console-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      background: var(--gray-50);
+    }
+
+    /* Panels */
+    .console-panel { display: none; }
+    .console-panel.active { display: block; animation: fadeInPanel 0.2s ease; }
+
+    @keyframes fadeInPanel {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .panel-header {
+      margin-bottom: 24px;
+    }
+    .panel-header h2 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--gray-900);
+      margin-bottom: 4px;
+    }
+    .panel-header p {
+      color: var(--gray-500);
+      font-size: 14px;
+    }
+
+    /* ---------- Stat Cards ---------- */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      transition: box-shadow 0.2s;
+    }
+    .stat-card:hover { box-shadow: var(--shadow-md); }
+    .stat-label {
+      font-size: 13px;
+      color: var(--gray-500);
+      margin-bottom: 4px;
+    }
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--gray-900);
+    }
+    .stat-sub {
+      font-size: 12px;
+      color: var(--gray-400);
+      margin-top: 4px;
+    }
+    .stat-card.primary .stat-value { color: var(--primary); }
+    .stat-card.success .stat-value { color: #10B981; }
+    .stat-card.warning .stat-value { color: #F59E0B; }
+    .stat-card.pink .stat-value { color: #EC4899; }
+
+    /* ---------- Chart ---------- */
+    .chart-container {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .chart-container h3 {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--gray-800);
+      margin-bottom: 20px;
+    }
+    .chart-area {
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      min-height: 210px;
+      padding: 0 4px;
+      position: relative;
+    }
+    .chart-bar-group {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100%;
+      justify-content: flex-end;
+    }
+    .chart-bar {
+      width: 100%;
+      max-width: 36px;
+      border-radius: 4px 4px 0 0;
+      position: relative;
+      transition: height 0.4s;
+    }
+    .chart-tooltip {
+      position: absolute;
+      top: -24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--gray-800);
+      color: #fff;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      opacity: 0;
+      transition: opacity 0.2s;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+    .chart-bar:hover .chart-tooltip { opacity: 1; }
+    .chart-label {
+      font-size: 11px;
+      color: var(--gray-400);
+      margin-top: 4px;
+      white-space: nowrap;
+    }
+
+    /* ---------- API Keys ---------- */
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .section-header h3 {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--gray-800);
+    }
+
+    .btn-create {
+      padding: 8px 20px;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s;
+    }
+    .btn-create:hover { background: var(--primary-hover); }
+
+    /* ---------- Tables ---------- */
+    .table-wrapper {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+    .console-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    .console-table th {
+      background: var(--gray-50);
+      color: var(--gray-500);
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--gray-200);
+    }
+    .console-table td {
+      padding: 12px 16px;
+      color: var(--gray-700);
+      border-bottom: 1px solid var(--gray-100);
+    }
+    .console-table tr:last-child td { border-bottom: none; }
+    .console-table tr:hover td { background: var(--gray-50); }
+    .empty-cell {
+      text-align: center !important;
+      color: var(--gray-400) !important;
+      padding: 40px 16px !important;
+      font-style: italic;
+    }
+
+    .key-display {
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      font-size: 13px;
+      color: var(--gray-600);
+      background: var(--gray-50);
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 20px;
+    }
+    .badge-success { background: #D1FAE5; color: #059669; }
+    .badge-danger { background: #FEE2E2; color: #DC2626; }
+
+    .action-cell { white-space: nowrap; }
+    .btn-sm {
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid var(--gray-200);
+      background: var(--white);
+      color: var(--gray-600);
+      font-family: inherit;
+      transition: all 0.15s;
+      margin: 0 2px;
+    }
+    .btn-sm:hover { background: var(--gray-50); }
+    .btn-danger { color: #DC2626; border-color: #FCA5A5; }
+    .btn-danger:hover { background: #FEE2E2; }
+
+    .amount-positive { color: #059669; font-weight: 600; }
+    .amount-negative { color: #DC2626; font-weight: 600; }
+
+    /* ---------- Usage ---------- */
+    .usage-toggle-group {
+      display: flex;
+      gap: 4px;
+      background: var(--gray-100);
+      border-radius: var(--radius-sm);
+      padding: 3px;
+      margin-bottom: 20px;
+    }
+    .usage-toggle {
+      padding: 6px 16px;
+      border: none;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+      color: var(--gray-500);
+      background: transparent;
+      transition: all 0.15s;
+    }
+    .usage-toggle.active {
+      background: var(--white);
+      color: var(--gray-800);
+      box-shadow: var(--shadow-sm);
+    }
+    .usage-toggle:hover:not(.active) { color: var(--gray-700); }
+
+    /* ---------- Billing ---------- */
+    .balance-card {
+      background: linear-gradient(135deg, #6366F1, #8B5CF6);
+      border-radius: var(--radius-xl);
+      padding: 32px;
+      color: #fff;
+      margin-bottom: 24px;
+    }
+    .balance-card .label {
+      font-size: 14px;
+      opacity: 0.85;
+      margin-bottom: 4px;
+    }
+    .balance-card .amount {
+      font-size: 42px;
+      font-weight: 800;
+      margin-bottom: 16px;
+    }
+    .btn-topup {
+      padding: 10px 28px;
+      background: rgba(255,255,255,0.2);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: var(--radius-sm);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+    }
+    .btn-topup:hover { background: rgba(255,255,255,0.3); }
+
+    /* ---------- Topup Modal ---------- */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal-card {
+      background: var(--white);
+      border-radius: var(--radius-xl);
+      padding: 32px;
+      width: 400px;
+      max-width: 90vw;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+      animation: fadeInUp 0.2s ease;
+      text-align: center;
+    }
+    .modal-card h3 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .modal-card p.sub { font-size: 14px; color: var(--gray-500); margin-bottom: 24px; }
+    .amount-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .amount-btn {
+      padding: 14px 8px;
+      border: 2px solid var(--gray-200);
+      border-radius: var(--radius-md);
+      background: var(--white);
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+      text-align: center;
+    }
+    .amount-btn .price { font-size: 18px; font-weight: 700; color: var(--gray-900); display: block; }
+    .amount-btn .label { font-size: 12px; color: var(--gray-400); margin-top: 2px; display: block; }
+    .amount-btn:hover { border-color: var(--primary); background: var(--primary-light); }
+    .amount-btn.selected { border-color: var(--primary); background: var(--primary-light); }
+    .qr-area {
+      min-height: 220px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+    .qr-area canvas, .qr-area img {
+      width: 200px; height: 200px;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-md);
+    }
+    .qr-area .hint { font-size: 13px; color: var(--gray-500); margin-top: 12px; }
+    .qr-area .status-badge {
+      display: inline-block; padding: 4px 16px; border-radius: 20px;
+      font-size: 13px; font-weight: 600; margin-top: 8px;
+    }
+    .status-badge.pending { background: #FFF7ED; color: #EA580C; }
+    .status-badge.success { background: #D1FAE5; color: #059669; }
+    .modal-actions { display: flex; gap: 10px; justify-content: center; }
+    .modal-actions button {
+      padding: 10px 24px; border-radius: var(--radius-md);
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      font-family: inherit; border: none; transition: all 0.15s;
+    }
+    .modal-actions .cancel-btn { background: var(--gray-100); color: var(--gray-700); }
+    .modal-actions .cancel-btn:hover { background: var(--gray-200); }
+    .modal-actions .pay-btn { background: var(--primary); color: var(--white); }
+    .modal-actions .pay-btn:hover { background: var(--primary-hover); }
+    .btn-pay-link {
+      display: inline-block; padding: 14px 36px;
+      background: var(--primary); color: #fff;
+      border-radius: var(--radius-md); text-decoration: none;
+      font-size: 16px; font-weight: 700;
+      transition: all 0.15s;
+    }
+    .btn-pay-link:hover { background: var(--primary-hover); transform: translateY(-1px); }
+    .modal-close {
+      position: absolute; top: 16px; right: 16px;
+      background: none; border: none; font-size: 20px;
+      color: var(--gray-400); cursor: pointer; padding: 4px;
+    }
+    .modal-close:hover { color: var(--gray-600); }
+
+    /* ---------- Settings ---------- */
+    .settings-card {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      max-width: 600px;
+    }
+    .settings-card .form-group { margin-bottom: 20px; }
+    .settings-card label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--gray-700);
+      margin-bottom: 6px;
+    }
+    .settings-card input[type="text"],
+    .settings-card input[type="email"],
+    .settings-card select {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid var(--gray-300);
+      border-radius: var(--radius-sm);
+      font-size: 15px;
+      font-family: inherit;
+      color: var(--gray-800);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .settings-card input:focus,
+    .settings-card select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+    }
+    .settings-card .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .settings-card .checkbox-group input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--primary);
+    }
+
+    .btn-save {
+      padding: 10px 28px;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s;
+    }
+    .btn-save:hover { background: var(--primary-hover); }
+
+    /* ---------- Scrollbar ---------- */
+    .console-content::-webkit-scrollbar,
+    .console-sidebar::-webkit-scrollbar { width: 6px; }
+    .console-content::-webkit-scrollbar-track,
+    .console-sidebar::-webkit-scrollbar-track { background: transparent; }
+    .console-content::-webkit-scrollbar-thumb,
+    .console-sidebar::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 3px; }
+
+    /* ---------- Mobile Responsive ---------- */
+    @media (max-width: 768px) {
+      .pg-header { padding: 0 12px; }
+      .pg-logo { font-size: 16px; margin-right: 16px; }
+      .pg-nav { gap: 12px; }
+      .pg-nav a { font-size: 13px; }
+      .sidebar-toggle { display: block; }
+      .header-badge { display: none; }
+
+      .console-sidebar {
+        position: fixed;
+        top: 56px;
+        left: 0;
+        bottom: 0;
+        width: 260px;
+        z-index: 40;
+        transform: translateX(-100%);
+        transition: transform 0.25s;
+        box-shadow: 4px 0 16px rgba(0,0,0,0.1);
+      }
+      .console-sidebar.open { transform: translateX(0); }
+
+      .console-content { padding: 16px; }
+      .stat-grid { grid-template-columns: repeat(2, 1fr); }
+      .stat-value { font-size: 22px; }
+
+      .balance-card .amount { font-size: 32px; }
+      .balance-card { padding: 24px; }
+
+      .settings-card { padding: 20px; }
+      .console-table { font-size: 13px; }
+      .console-table th, .console-table td { padding: 10px 12px; }
+    }
+
+    @media (max-width: 480px) {
+      .stat-grid { grid-template-columns: 1fr; }
+      .section-header { flex-direction: column; align-items: stretch; }
+      .chart-bar { max-width: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="console-layout">
+    <!-- Header -->
+    <header class="pg-header">
+      <button id="sidebarToggle" class="sidebar-toggle" aria-label="菜单">&#9776;</button>
+      <a href="/" class="pg-logo">AI 聚合平台</a>
+      <nav class="pg-nav">
+        <a href="playground.html">Playground</a>
+        <a href="console.html" class="active">控制台</a>
+        <a href="login.html">登录</a>
+      </nav>
+      <div class="header-right">
+        <span class="header-badge">开发者</span>
+      </div>
+    </header>
+
+    <!-- Body -->
+    <div class="console-body">
+      <!-- Sidebar -->
+      <aside class="console-sidebar">
+        <div class="sidebar-section">
+          <h4>概览</h4>
+          <button class="console-nav-item active" data-panel="dashboard">
+            <span class="nav-icon">&#9783;</span> 仪表盘
+          </button>
+          <button class="console-nav-item" data-panel="api-keys">
+            <span class="nav-icon">&#128273;</span> API Keys
+          </button>
+        </div>
+        <div class="sidebar-section">
+          <h4>统计</h4>
+          <button class="console-nav-item" data-panel="usage">
+            <span class="nav-icon">&#128200;</span> 使用量
+          </button>
+          <button class="console-nav-item" data-panel="billing">
+            <span class="nav-icon">&#128179;</span> 账单
+          </button>
+        </div>
+        <div class="sidebar-section">
+          <h4>管理</h4>
+          <button class="console-nav-item" data-panel="settings">
+            <span class="nav-icon">&#9881;</span> 设置
+          </button>
+        </div>
+        <div class="sidebar-footer">
+          <div class="sidebar-balance">
+            <div>
+              <div class="label">账户余额</div>
+              <div class="amount" id="sidebarBalance">¥99.50</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Content -->
+      <main class="console-content">
+        <!-- ===== Dashboard Panel ===== -->
+        <div id="panel-dashboard" class="console-panel active">
+          <div class="panel-header">
+            <h2>仪表盘</h2>
+            <p>查看 API 使用概览和关键指标</p>
+          </div>
+          <div class="stat-grid">
+            <div class="stat-card primary">
+              <div class="stat-label">账户余额</div>
+              <div class="stat-value" id="statBalance">¥0.00</div>
+              <div class="stat-sub">可用余额</div>
+            </div>
+            <div class="stat-card success">
+              <div class="stat-label">今日调用</div>
+              <div class="stat-value" id="statTodayCalls">0</div>
+              <div class="stat-sub">次 API 请求</div>
+            </div>
+            <div class="stat-card warning">
+              <div class="stat-label">活跃 Key</div>
+              <div class="stat-value" id="statActiveKeys">0</div>
+              <div class="stat-sub">个 API Key</div>
+            </div>
+            <div class="stat-card pink">
+              <div class="stat-label">总 Token 消耗</div>
+              <div class="stat-value" id="statTotalTokens">0</div>
+              <div class="stat-sub">累计消耗</div>
+            </div>
+          </div>
+          <div class="chart-container">
+            <h3>近 7 天调用趋势</h3>
+            <div id="trendChart" class="chart-area"></div>
+          </div>
+        </div>
+
+        <!-- ===== API Keys Panel ===== -->
+        <div id="panel-api-keys" class="console-panel">
+          <div class="panel-header">
+            <h2>API Keys</h2>
+            <p>管理你的 API 访问密钥</p>
+          </div>
+          <div class="section-header">
+            <h3>已创建的密钥</h3>
+            <button id="createKeyBtn" class="btn-create">+ 创建新 Key</button>
+          </div>
+          <div class="table-wrapper">
+            <table class="console-table">
+              <thead>
+                <tr>
+                  <th>API Key</th>
+                  <th>名称</th>
+                  <th>创建时间</th>
+                  <th>最后使用</th>
+                  <th>状态</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="apiKeysBody">
+                <tr><td colspan="6" class="empty-cell">加载中...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ===== Usage Panel ===== -->
+        <div id="panel-usage" class="console-panel">
+          <div class="panel-header">
+            <h2>使用量统计</h2>
+            <p>按模型查看 API 调用和 Token 消耗</p>
+          </div>
+          <div class="usage-toggle-group">
+            <button class="usage-toggle active" data-type="daily">今日</button>
+            <button class="usage-toggle" data-type="monthly">本月</button>
+          </div>
+          <div class="stat-grid">
+            <div class="stat-card success">
+              <div class="stat-label">总调用次数</div>
+              <div class="stat-value" id="usageTotalCalls">0</div>
+            </div>
+            <div class="stat-card pink">
+              <div class="stat-label">总 Token 消耗</div>
+              <div class="stat-value" id="usageTotalTokens">0</div>
+            </div>
+          </div>
+          <div class="chart-container">
+            <h3>按模型调用分布</h3>
+            <div id="usageChart" class="chart-area"></div>
+          </div>
+          <div class="table-wrapper">
+            <table class="console-table">
+              <thead>
+                <tr>
+                  <th>模型</th>
+                  <th>调用次数</th>
+                  <th>Token 消耗</th>
+                  <th>每次 Token</th>
+                </tr>
+              </thead>
+              <tbody id="usageBody">
+                <tr><td colspan="4" class="empty-cell">加载中...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ===== Billing Panel ===== -->
+        <div id="panel-billing" class="console-panel">
+          <div class="panel-header">
+            <h2>账单</h2>
+            <p>查看账户余额和交易记录</p>
+          </div>
+          <div class="balance-card">
+            <div class="label">当前余额</div>
+            <div class="amount" id="billingBalance">¥0.00</div>
+            <button id="topupBtn" class="btn-topup">充值</button>
+          </div>
+          <div class="section-header">
+            <h3>交易记录</h3>
+          </div>
+          <div class="table-wrapper">
+            <table class="console-table">
+              <thead>
+                <tr>
+                  <th>日期</th>
+                  <th>描述</th>
+                  <th>金额</th>
+                </tr>
+              </thead>
+              <tbody id="billingBody">
+                <tr><td colspan="3" class="empty-cell">加载中...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ===== Settings Panel ===== -->
+        <div id="panel-settings" class="console-panel">
+          <div class="panel-header">
+            <h2>设置</h2>
+            <p>管理账户偏好和通知</p>
+          </div>
+          <div class="settings-card">
+            <div class="form-group">
+              <label>显示名称</label>
+              <input type="text" id="settingsName" placeholder="输入你的显示名称">
+            </div>
+            <div class="form-group">
+              <label>联系邮箱</label>
+              <input type="email" id="settingsEmail" placeholder="输入联系邮箱">
+            </div>
+            <div class="form-group">
+              <label>默认模型</label>
+              <select id="settingsDefaultModel"></select>
+            </div>
+            <div class="form-group">
+              <label>
+                <div class="checkbox-group">
+                  <input type="checkbox" id="settingsNotify" checked>
+                  <span>启用使用量通知</span>
+                </div>
+              </label>
+            </div>
+            <button id="settingsSaveBtn" class="btn-save">保存设置</button>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ===== Top-up Modal ===== -->
+  <div class="modal-overlay" id="topupModal">
+    <div class="modal-card" style="position:relative;">
+      <button class="modal-close" id="modalClose">&times;</button>
+      <h3>账户充值</h3>
+      <p class="sub">选择充值金额，前往爱发电完成支付</p>
+
+      <!-- Step 1: Select amount -->
+      <div id="topupStep1">
+        <div class="amount-grid" id="amountGrid">
+          <button class="amount-btn" data-amount="5">
+            <span class="price">¥5</span>
+            <span class="label">2.5 亿 Tokens</span>
+          </button>
+          <button class="amount-btn selected" data-amount="10">
+            <span class="price">¥10</span>
+            <span class="label">5 亿 Tokens</span>
+          </button>
+          <button class="amount-btn" data-amount="20">
+            <span class="price">¥20</span>
+            <span class="label">10 亿 Tokens</span>
+          </button>
+          <button class="amount-btn" data-amount="50">
+            <span class="price">¥50</span>
+            <span class="label">25 亿 Tokens</span>
+          </button>
+          <button class="amount-btn" data-amount="100">
+            <span class="price">¥100</span>
+            <span class="label">50 亿 Tokens</span>
+          </button>
+        </div>
+        <div class="modal-actions">
+          <button class="cancel-btn" id="topupCancel">取消</button>
+          <button class="pay-btn" id="topupConfirm">去支付</button>
+        </div>
+      </div>
+
+      <!-- Step 2: Show payment link (爱发电) -->
+      <div id="topupStep2" style="display:none;">
+        <div class="qr-area" id="qrArea">
+          <div id="qrPlaceholder" style="color:var(--gray-400);font-size:14px;">创建支付订单中...</div>
+          <div id="payLinkArea" style="display:none;margin-top:8px;">
+            <a id="payUrlLink" href="#" target="_blank" class="btn-pay-link">
+              前往爱发电支付
+            </a>
+            <p style="font-size:12px;color:var(--gray-500);margin-top:12px;line-height:1.6;">
+              点击按钮打开爱发电 → 完成支付后自动到账<br>
+              <span id="payOrderId" style="color:var(--gray-400);font-size:11px;"></span>
+            </p>
+          </div>
+          <div id="qrStatus"></div>
+        </div>
+        <div class="modal-actions">
+          <button class="cancel-btn" id="topupCancel2">取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/console.js"></script>
+</body>
+</html>

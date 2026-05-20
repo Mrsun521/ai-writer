@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>登录 - AI 聚合平台</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    :root {
+      --primary: #6366F1;
+      --primary-hover: #4F46E5;
+      --primary-light: #EEF2FF;
+    }
+
+    /* ---------- Full page gradient ---------- */
+    .auth-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 50%, #A78BFA 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Decorative circles */
+    .auth-page::before,
+    .auth-page::after {
+      content: '';
+      position: absolute;
+      border-radius: 50%;
+      opacity: 0.15;
+    }
+    .auth-page::before {
+      width: 400px;
+      height: 400px;
+      background: #fff;
+      top: -100px;
+      right: -100px;
+    }
+    .auth-page::after {
+      width: 300px;
+      height: 300px;
+      background: #fff;
+      bottom: -80px;
+      left: -80px;
+    }
+
+    /* ---------- Auth Card ---------- */
+    .auth-card {
+      width: 100%;
+      max-width: 420px;
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 20px;
+      padding: 40px 36px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+      position: relative;
+      z-index: 1;
+      animation: cardSlideUp 0.5s ease;
+    }
+
+    @keyframes cardSlideUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .auth-logo {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .auth-logo h1 {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--primary);
+      letter-spacing: -0.5px;
+    }
+    .auth-logo p {
+      font-size: 14px;
+      color: var(--gray-500);
+      margin-top: 4px;
+    }
+
+    /* ---------- Tabs ---------- */
+    .auth-tabs {
+      display: flex;
+      background: var(--gray-100);
+      border-radius: 12px;
+      padding: 4px;
+      margin-bottom: 28px;
+    }
+    .auth-tab {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      color: var(--gray-500);
+      background: transparent;
+      transition: all 0.2s;
+    }
+    .auth-tab.active {
+      background: var(--white);
+      color: var(--gray-900);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .auth-tab:hover:not(.active) { color: var(--gray-700); }
+
+    /* ---------- Forms ---------- */
+    .auth-form { display: none; }
+    .auth-form.active { display: block; animation: fadeForm 0.25s ease; }
+
+    @keyframes fadeForm {
+      from { opacity: 0; transform: translateX(8px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    .auth-form .form-group { margin-bottom: 18px; }
+
+    .auth-form .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gray-700);
+      margin-bottom: 6px;
+    }
+
+    .auth-form .form-group input[type="email"],
+    .auth-form .form-group input[type="password"],
+    .auth-form .form-group input[type="text"] {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1.5px solid var(--gray-200);
+      border-radius: 12px;
+      font-size: 15px;
+      font-family: inherit;
+      color: var(--gray-800);
+      outline: none;
+      background: var(--gray-50);
+      transition: all 0.2s;
+      box-sizing: border-box;
+    }
+    .auth-form .form-group input:focus {
+      border-color: var(--primary);
+      background: var(--white);
+      box-shadow: 0 0 0 4px rgba(99,102,241,0.1);
+    }
+    .auth-form .form-group input.error {
+      border-color: #EF4444;
+      background: #FFF5F5;
+    }
+
+    .auth-form .form-group .error-text {
+      font-size: 12px;
+      color: #EF4444;
+      margin-top: 4px;
+      display: none;
+    }
+    .auth-form .form-group .error-text.show { display: block; }
+
+    .auth-form .form-check {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+    .auth-form .form-check input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--primary);
+    }
+    .auth-form .form-check label {
+      font-size: 13px;
+      color: var(--gray-600);
+      cursor: pointer;
+    }
+    .auth-form .form-check label a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .auth-form .btn-submit {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #6366F1, #8B5CF6);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+    .auth-form .btn-submit:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(99,102,241,0.3);
+    }
+    .auth-form .btn-submit:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+    .auth-form .btn-submit.loading {
+      position: relative;
+      color: transparent;
+    }
+    .auth-form .btn-submit.loading::after {
+      content: '';
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      top: 50%;
+      left: 50%;
+      margin: -10px 0 0 -10px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* ---------- Social Login ---------- */
+    .social-divider {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin: 24px 0 20px;
+    }
+    .social-divider::before,
+    .social-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--gray-200);
+    }
+    .social-divider span {
+      font-size: 13px;
+      color: var(--gray-400);
+      white-space: nowrap;
+    }
+
+    .social-buttons {
+      display: flex;
+      gap: 12px;
+    }
+    .social-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px;
+      border: 1.5px solid var(--gray-200);
+      border-radius: 12px;
+      background: var(--white);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--gray-700);
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+    }
+    .social-btn:hover {
+      border-color: var(--gray-300);
+      background: var(--gray-50);
+    }
+    .social-btn .social-icon {
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    /* ---------- Success Overlay ---------- */
+    .auth-success {
+      display: none;
+      text-align: center;
+      padding: 40px 0;
+    }
+    .auth-success.show { display: block; animation: fadeForm 0.3s ease; }
+    .auth-success .success-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: #D1FAE5;
+      color: #059669;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      margin: 0 auto 16px;
+    }
+    .auth-success h3 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--gray-900);
+      margin-bottom: 4px;
+    }
+    .auth-success p {
+      color: var(--gray-500);
+      font-size: 14px;
+    }
+
+    /* ---------- Responsive ---------- */
+    @media (max-width: 480px) {
+      .auth-card {
+        padding: 28px 20px;
+      }
+      .auth-logo h1 { font-size: 20px; }
+      .social-buttons { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-page">
+    <div class="auth-card">
+      <!-- Logo -->
+      <div class="auth-logo">
+        <a href="/" style="text-decoration:none;color:inherit;"><h1>AI 聚合平台</h1></a>
+        <p>登录以使用全部功能</p>
+      </div>
+
+      <!-- Tabs -->
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-tab="login">登录</button>
+        <button class="auth-tab" data-tab="register">注册</button>
+      </div>
+
+      <!-- ===== Login Form ===== -->
+      <form id="loginForm" class="auth-form active" novalidate>
+        <div class="form-group">
+          <label>邮箱地址</label>
+          <input type="email" id="loginEmail" placeholder="请输入邮箱" autocomplete="email">
+          <div class="error-text" id="loginEmailError">请输入有效的邮箱地址</div>
+        </div>
+        <div class="form-group">
+          <label>密码</label>
+          <input type="password" id="loginPassword" placeholder="请输入密码" autocomplete="current-password">
+          <div class="error-text" id="loginPasswordError">请输入密码（至少 6 位）</div>
+        </div>
+        <div class="form-check">
+          <input type="checkbox" id="rememberMe">
+          <label for="rememberMe">记住我</label>
+        </div>
+        <button type="submit" class="btn-submit">登录</button>
+      </form>
+
+      <!-- ===== Register Form ===== -->
+      <form id="registerForm" class="auth-form" novalidate>
+        <div class="form-group">
+          <label>邮箱地址</label>
+          <input type="email" id="regEmail" placeholder="请输入邮箱" autocomplete="email">
+          <div class="error-text" id="regEmailError">请输入有效的邮箱地址</div>
+        </div>
+        <div class="form-group">
+          <label>密码</label>
+          <input type="password" id="regPassword" placeholder="请输入密码（至少 6 位）" autocomplete="new-password">
+          <div class="error-text" id="regPasswordError">密码至少 6 位</div>
+        </div>
+        <div class="form-group">
+          <label>确认密码</label>
+          <input type="password" id="regConfirm" placeholder="请再次输入密码" autocomplete="new-password">
+          <div class="error-text" id="regConfirmError">两次密码不一致</div>
+        </div>
+        <div class="form-check">
+          <input type="checkbox" id="agreeTerms">
+          <label for="agreeTerms">我已阅读并同意 <a href="#" onclick="return false;">服务条款</a></label>
+        </div>
+        <button type="submit" class="btn-submit">注册</button>
+      </form>
+
+      <!-- ===== Success State ===== -->
+      <div class="auth-success" id="authSuccess">
+        <div class="success-icon">&#10003;</div>
+        <h3 id="successTitle">登录成功！</h3>
+        <p id="successDesc">正在跳转...</p>
+      </div>
+
+      <!-- ===== Social Login ===== -->
+      <div class="social-divider">
+        <span>或使用以下方式</span>
+      </div>
+      <div class="social-buttons">
+        <button class="social-btn" id="githubLogin">
+          <span class="social-icon">&#9733;</span> GitHub
+        </button>
+        <button class="social-btn" id="wechatLogin">
+          <span class="social-icon">&#9993;</span> 微信
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ---------- DOM refs ---------- */
+    const tabs = document.querySelectorAll('.auth-tab');
+    const loginForm = document.getElementById('loginForm');
+    const registerForm = document.getElementById('registerForm');
+    const authSuccess = document.getElementById('authSuccess');
+    const successTitle = document.getElementById('successTitle');
+    const successDesc = document.getElementById('successDesc');
+
+    const loginEmail = document.getElementById('loginEmail');
+    const loginPassword = document.getElementById('loginPassword');
+    const loginEmailErr = document.getElementById('loginEmailError');
+    const loginPasswordErr = document.getElementById('loginPasswordError');
+
+    const regEmail = document.getElementById('regEmail');
+    const regPassword = document.getElementById('regPassword');
+    const regConfirm = document.getElementById('regConfirm');
+    const regEmailErr = document.getElementById('regEmailError');
+    const regPasswordErr = document.getElementById('regPasswordError');
+    const regConfirmErr = document.getElementById('regConfirmError');
+    const agreeTerms = document.getElementById('agreeTerms');
+
+    const rememberMe = document.getElementById('rememberMe');
+    const githubBtn = document.getElementById('githubLogin');
+    const wechatBtn = document.getElementById('wechatLogin');
+
+    let currentTab = 'login';
+
+    /* ---------- Tab Switching ---------- */
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        const target = tab.dataset.tab;
+        if (target === currentTab) return;
+        currentTab = target;
+
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+
+        loginForm.classList.toggle('active', target === 'login');
+        registerForm.classList.toggle('active', target === 'register');
+        authSuccess.classList.remove('show');
+
+        clearErrors();
+      });
+    });
+
+    /* ---------- Validation ---------- */
+    function validateEmail(email) {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+
+    function clearErrors() {
+      document.querySelectorAll('.error-text').forEach(el => el.classList.remove('show'));
+      document.querySelectorAll('.form-group input.error').forEach(el => el.classList.remove('error'));
+    }
+
+    function showError(input, errEl) {
+      input.classList.add('error');
+      errEl.classList.add('show');
+    }
+
+    function validateLogin() {
+      clearErrors();
+      let valid = true;
+
+      if (!validateEmail(loginEmail.value.trim())) {
+        showError(loginEmail, loginEmailErr);
+        valid = false;
+      }
+      if (loginPassword.value.length < 6) {
+        showError(loginPassword, loginPasswordErr);
+        valid = false;
+      }
+      return valid;
+    }
+
+    function validateRegister() {
+      clearErrors();
+      let valid = true;
+
+      if (!validateEmail(regEmail.value.trim())) {
+        showError(regEmail, regEmailErr);
+        valid = false;
+      }
+      if (regPassword.value.length < 6) {
+        showError(regPassword, regPasswordErr);
+        valid = false;
+      }
+      if (regPassword.value !== regConfirm.value) {
+        showError(regConfirm, regConfirmErr);
+        valid = false;
+      }
+      return valid;
+    }
+
+    /* ---------- Form Submission ---------- */
+    function showSuccess(isLogin) {
+      loginForm.classList.remove('active');
+      registerForm.classList.remove('active');
+      authSuccess.classList.add('show');
+      successTitle.textContent = isLogin ? '登录成功！' : '注册成功！';
+      successDesc.textContent = '即将跳转到 Playground...';
+    }
+
+    loginForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!validateLogin()) return;
+
+      const btn = loginForm.querySelector('.btn-submit');
+      btn.classList.add('loading');
+      btn.disabled = true;
+
+      setTimeout(() => {
+        btn.classList.remove('loading');
+        btn.disabled = false;
+
+        if (rememberMe.checked) {
+          try {
+            localStorage.setItem('remembered_email', loginEmail.value.trim());
+          } catch (_) {}
+        }
+
+        showSuccess(true);
+        // Redirect after delay
+        setTimeout(() => {
+          window.location.href = 'playground.html';
+        }, 1500);
+      }, 1200);
+    });
+
+    registerForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!validateRegister()) return;
+
+      if (!agreeTerms.checked) {
+        alert('请同意服务条款');
+        return;
+      }
+
+      const btn = registerForm.querySelector('.btn-submit');
+      btn.classList.add('loading');
+      btn.disabled = true;
+
+      setTimeout(() => {
+        btn.classList.remove('loading');
+        btn.disabled = false;
+        showSuccess(false);
+        setTimeout(() => {
+          window.location.href = 'playground.html';
+        }, 1500);
+      }, 1200);
+    });
+
+    /* ---------- Real-time Validation ---------- */
+    loginEmail.addEventListener('blur', () => {
+      if (loginEmail.value.trim() && !validateEmail(loginEmail.value.trim())) {
+        showError(loginEmail, loginEmailErr);
+      } else {
+        loginEmail.classList.remove('error');
+        loginEmailErr.classList.remove('show');
+      }
+    });
+    loginPassword.addEventListener('blur', () => {
+      if (loginPassword.value && loginPassword.value.length < 6) {
+        showError(loginPassword, loginPasswordErr);
+      } else {
+        loginPassword.classList.remove('error');
+        loginPasswordErr.classList.remove('show');
+      }
+    });
+
+    regEmail.addEventListener('blur', () => {
+      if (regEmail.value.trim() && !validateEmail(regEmail.value.trim())) {
+        showError(regEmail, regEmailErr);
+      } else {
+        regEmail.classList.remove('error');
+        regEmailErr.classList.remove('show');
+      }
+    });
+    regPassword.addEventListener('blur', () => {
+      if (regPassword.value && regPassword.value.length < 6) {
+        showError(regPassword, regPasswordErr);
+      } else {
+        regPassword.classList.remove('error');
+        regPasswordErr.classList.remove('show');
+      }
+    });
+    regConfirm.addEventListener('blur', () => {
+      if (regConfirm.value && regPassword.value !== regConfirm.value) {
+        showError(regConfirm, regConfirmErr);
+      } else {
+        regConfirm.classList.remove('error');
+        regConfirmErr.classList.remove('show');
+      }
+    });
+
+    /* ---------- Social Login (mock) ---------- */
+    githubBtn.addEventListener('click', () => {
+      githubBtn.textContent = '正在跳转...';
+      githubBtn.disabled = true;
+      setTimeout(() => {
+        githubBtn.textContent = '★ GitHub';
+        githubBtn.disabled = false;
+        showSuccess(true);
+        setTimeout(() => { window.location.href = 'playground.html'; }, 1500);
+      }, 1000);
+    });
+
+    wechatBtn.addEventListener('click', () => {
+      wechatBtn.textContent = '打开微信...';
+      wechatBtn.disabled = true;
+      setTimeout(() => {
+        wechatBtn.textContent = '✉ 微信';
+        wechatBtn.disabled = false;
+        showSuccess(true);
+        setTimeout(() => { window.location.href = 'playground.html'; }, 1500);
+      }, 1000);
+    });
+
+    /* ---------- Restore remembered email ---------- */
+    try {
+      const remembered = localStorage.getItem('remembered_email');
+      if (remembered) {
+        loginEmail.value = remembered;
+        rememberMe.checked = true;
+      }
+    } catch (_) {}
+  </script>
+</body>
+</html>

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>小红书文案生成器 - AI 写作助手</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-inner">
+      <a href="/" class="navbar-logo">AI 写作助手</a>
+      <ul class="navbar-links">
+        <li><a href="/">首页</a></li>
+        <li><a href="/tools/weekly.html">工具</a></li>
+        <li><a href="/pricing.html">价格</a></li>
+      </ul>
+      <div class="navbar-usage">
+        <span class="usage-badge">剩余 10 次</span>
+      </div>
+    </div>
+  </nav>
+
+  <main class="main-content">
+    <div class="container">
+      <div style="padding: 24px 0 0;">
+        <h1 style="font-size: 28px; font-weight: 800; color: var(--gray-900);">小红书文案生成器</h1>
+        <p style="color: var(--gray-500); margin-top: 4px;">智能生成小红书爆款文案，标题吸睛、正文动人</p>
+      </div>
+
+      <div class="tool-layout">
+        <div class="tool-section">
+          <h2>输入信息</h2>
+          <div class="form-group">
+            <label for="topic">主题</label>
+            <input id="topic" data-param="topic" placeholder="例如：一款好用的笔记软件推荐">
+          </div>
+          <div class="form-group">
+            <label for="audience">目标受众</label>
+            <select id="audience" data-param="audience">
+              <option value="通用">通用</option>
+              <option value="学生党">学生党</option>
+              <option value="上班族">上班族</option>
+              <option value="宝妈">宝妈</option>
+              <option value="健身爱好者">健身爱好者</option>
+              <option value="美妆爱好者">美妆爱好者</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="tone">语气风格</label>
+            <select id="tone" data-param="tone">
+              <option value="活泼">活泼</option>
+              <option value="正式">正式</option>
+              <option value="专业">专业</option>
+              <option value="幽默">幽默</option>
+              <option value="温暖">温暖</option>
+            </select>
+          </div>
+          <button id="generateBtn" class="btn btn-primary btn-block btn-lg" data-type="xiaohongshu">生成</button>
+        </div>
+
+        <div class="tool-section">
+          <div class="output-header">
+            <h2>生成结果</h2>
+            <button id="copyBtn" class="copy-btn">复制文案</button>
+          </div>
+          <div id="outputArea" class="output-area"></div>
+          <p style="font-size: 13px; color: var(--gray-400);">每次生成消耗 1 次免费次数</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; 2026 AI 写作助手. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script src="../js/api.js"></script>
+  <script src="../js/app.js"></script>
+</body>
+</html>

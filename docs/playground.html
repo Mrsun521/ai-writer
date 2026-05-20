@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Playground - AI 聚合平台</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    :root {
+      --primary: #6366F1;
+      --primary-hover: #4F46E5;
+      --primary-light: #EEF2FF;
+    }
+
+    html, body { height: 100%; overflow: hidden; }
+    body { background: var(--gray-50); }
+
+    /* ---------- Playground Layout ---------- */
+    .playground {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    /* Header */
+    .pg-header {
+      display: flex;
+      align-items: center;
+      height: 56px;
+      padding: 0 20px;
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--gray-200);
+      flex-shrink: 0;
+      z-index: 50;
+    }
+
+    .pg-logo {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--primary);
+      text-decoration: none;
+      margin-right: 32px;
+    }
+    .pg-logo:hover { color: var(--primary-hover); }
+
+    .pg-nav { display: flex; gap: 24px; }
+    .pg-nav a {
+      text-decoration: none;
+      color: var(--gray-500);
+      font-size: 14px;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+    .pg-nav a:hover { color: var(--gray-700); }
+    .pg-nav a.active { color: var(--primary); font-weight: 600; }
+
+    .pg-header-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .pg-user-btn {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ---------- Playground Body ---------- */
+    .pg-body {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ---------- Session Sidebar ---------- */
+    .session-sidebar {
+      width: 260px;
+      background: var(--white);
+      border-right: 1px solid var(--gray-200);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      transition: transform 0.25s, width 0.25s;
+    }
+
+    .session-sidebar.hidden {
+      width: 0;
+      overflow: hidden;
+      border: none;
+    }
+
+    .sidebar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px;
+      border-bottom: 1px solid var(--gray-100);
+    }
+    .sidebar-header h3 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--gray-700);
+    }
+    .sidebar-close {
+      background: none;
+      border: none;
+      color: var(--gray-400);
+      cursor: pointer;
+      font-size: 18px;
+      padding: 4px;
+    }
+    .sidebar-close:hover { color: var(--gray-600); }
+
+    .session-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    .session-item {
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      margin-bottom: 2px;
+      transition: background 0.15s;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .session-item:hover { background: var(--gray-50); }
+    .session-item.active { background: var(--primary-light); }
+    .session-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--gray-700);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .session-model {
+      font-size: 11px;
+      color: var(--gray-400);
+    }
+
+    /* ---------- Main Chat Area ---------- */
+    .pg-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    /* Toolbar */
+    .pg-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 20px;
+      border-bottom: 1px solid var(--gray-200);
+      background: var(--white);
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+
+    .toolbar-btn {
+      background: none;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-sm);
+      padding: 6px 10px;
+      cursor: pointer;
+      color: var(--gray-600);
+      font-size: 16px;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+    .toolbar-btn:hover { background: var(--gray-50); border-color: var(--gray-300); }
+
+    .model-select-group { display: flex; align-items: center; gap: 8px; }
+    .model-select-group label { font-size: 13px; color: var(--gray-500); white-space: nowrap; }
+    .model-select {
+      padding: 6px 12px;
+      border: 1px solid var(--gray-300);
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-family: inherit;
+      color: var(--gray-800);
+      background: var(--white);
+      cursor: pointer;
+      outline: none;
+      min-width: 180px;
+    }
+    .model-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+
+    .temp-control { display: flex; align-items: center; gap: 6px; }
+    .temp-control label { font-size: 13px; color: var(--gray-500); white-space: nowrap; }
+    .temp-slider {
+      width: 80px;
+      accent-color: var(--primary);
+    }
+    .temp-value {
+      font-size: 13px;
+      color: var(--gray-600);
+      min-width: 28px;
+      text-align: center;
+    }
+
+    .toolbar-spacer { flex: 1; min-width: 8px; }
+
+    .btn-newchat {
+      padding: 6px 16px;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      white-space: nowrap;
+      transition: background 0.15s;
+    }
+    .btn-newchat:hover { background: var(--primary-hover); }
+
+    /* ---------- Messages Area ---------- */
+    .pg-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 20px;
+      background: var(--gray-50);
+    }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      text-align: center;
+      padding: 40px 20px;
+    }
+    .empty-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+    .empty-state h3 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--gray-800);
+      margin-bottom: 4px;
+    }
+    .empty-state p {
+      color: var(--gray-500);
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+    .empty-hint { color: var(--gray-400) !important; font-size: 13px !important; margin-top: 8px !important; }
+
+    /* Messages */
+    .message {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      animation: fadeInMsg 0.3s ease;
+    }
+    @keyframes fadeInMsg {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message.assistant { justify-content: flex-start; }
+    .message.user { justify-content: flex-end; }
+
+    .msg-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .msg-bubble {
+      max-width: 70%;
+      min-width: 60px;
+    }
+
+    .message.assistant .msg-bubble {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: 4px 16px 16px 16px;
+      padding: 12px 16px;
+      box-shadow: var(--shadow-sm);
+    }
+    .message.user .msg-bubble {
+      background: var(--primary);
+      border-radius: 16px 4px 16px 16px;
+      padding: 12px 16px;
+    }
+
+    .msg-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .msg-model {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gray-500);
+    }
+    .msg-time {
+      font-size: 11px;
+      color: var(--gray-400);
+    }
+
+    .msg-content {
+      font-size: 15px;
+      line-height: 1.7;
+      word-break: break-word;
+    }
+    .message.assistant .msg-content { color: var(--gray-800); }
+    .message.user .msg-content { color: #fff; }
+
+    .msg-content strong { font-weight: 700; }
+    .msg-content code.inline-code {
+      background: var(--gray-100);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      color: #E11D48;
+    }
+    .message.assistant .msg-content code.inline-code {
+      background: var(--gray-100);
+      color: #E11D48;
+    }
+    .message.user .msg-content code.inline-code {
+      background: rgba(255,255,255,0.2);
+      color: #fff;
+    }
+
+    .msg-content pre {
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 12px 0;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .msg-content pre code {
+      background: none;
+      padding: 0;
+      color: inherit;
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+    }
+    .msg-content .code-header {
+      font-size: 11px;
+      color: #94a3b8;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .msg-content ul, .msg-content ol {
+      margin: 8px 0;
+      padding-left: 24px;
+    }
+    .msg-content li { margin-bottom: 4px; }
+    .message.assistant .msg-content li { color: var(--gray-700); }
+    .message.user .msg-content li { color: #fff; }
+
+    .msg-content table {
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: 14px;
+      width: 100%;
+    }
+    .msg-content th, .msg-content td {
+      border: 1px solid var(--gray-200);
+      padding: 8px 12px;
+      text-align: left;
+    }
+    .msg-content th {
+      background: var(--gray-50);
+      font-weight: 600;
+    }
+    .message.assistant .msg-content th { color: var(--gray-700); }
+    .message.assistant .msg-content td { color: var(--gray-600); }
+
+    /* Typing animation */
+    .typing-indicator .msg-bubble { padding: 16px 20px !important; }
+    .typing-dots { display: flex; gap: 5px; padding: 4px 0; }
+    .typing-dots span {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--gray-400);
+      animation: typingBounce 1.4s infinite;
+    }
+    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes typingBounce {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+      30% { transform: translateY(-6px); opacity: 1; }
+    }
+
+    /* ---------- Input Area ---------- */
+    .pg-input {
+      border-top: 1px solid var(--gray-200);
+      padding: 16px 20px;
+      background: var(--white);
+      flex-shrink: 0;
+    }
+
+    .input-wrapper {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .input-wrapper textarea {
+      flex: 1;
+      padding: 12px 16px;
+      border: 1px solid var(--gray-300);
+      border-radius: var(--radius-lg);
+      font-size: 15px;
+      font-family: inherit;
+      resize: none;
+      outline: none;
+      max-height: 200px;
+      line-height: 1.5;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .input-wrapper textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+    }
+    .input-wrapper textarea::placeholder {
+      color: var(--gray-400);
+    }
+
+    .btn-send {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+    .btn-send:hover:not(:disabled) { background: var(--primary-hover); transform: scale(1.05); }
+    .btn-send:disabled {
+      background: var(--gray-200);
+      cursor: not-allowed;
+    }
+    .btn-send svg { width: 20px; height: 20px; fill: currentColor; }
+
+    .input-footer {
+      max-width: 800px;
+      margin: 8px auto 0;
+      padding: 0 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .input-footer span {
+      font-size: 12px;
+      color: var(--gray-400);
+    }
+
+    /* ---------- Scrollbar ---------- */
+    .pg-messages::-webkit-scrollbar,
+    .session-list::-webkit-scrollbar { width: 6px; }
+    .pg-messages::-webkit-scrollbar-track,
+    .session-list::-webkit-scrollbar-track { background: transparent; }
+    .pg-messages::-webkit-scrollbar-thumb,
+    .session-list::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 3px; }
+    .pg-messages::-webkit-scrollbar-thumb:hover,
+    .session-list::-webkit-scrollbar-thumb:hover { background: var(--gray-300); }
+
+    /* ---------- Mobile Responsive ---------- */
+    @media (max-width: 768px) {
+      .pg-header { padding: 0 12px; }
+      .pg-logo { font-size: 16px; margin-right: 16px; }
+      .pg-nav { gap: 12px; }
+      .pg-nav a { font-size: 13px; }
+      .session-sidebar {
+        position: fixed;
+        top: 56px;
+        left: 0;
+        bottom: 0;
+        width: 280px;
+        z-index: 40;
+        transform: translateX(-100%);
+        box-shadow: 4px 0 16px rgba(0,0,0,0.1);
+      }
+      .session-sidebar.open {
+        transform: translateX(0);
+        width: 280px;
+      }
+      .session-sidebar.hidden {
+        width: 280px;
+      }
+      .pg-toolbar { padding: 8px 12px; gap: 8px; }
+      .model-select { min-width: 120px; font-size: 13px; }
+      .temp-control label { display: none; }
+      .temp-slider { width: 60px; }
+      .pg-messages { padding: 16px 12px; }
+      .msg-bubble { max-width: 85%; }
+      .pg-input { padding: 12px; }
+      .input-wrapper textarea { font-size: 14px; padding: 10px 14px; }
+      .btn-send { width: 42px; height: 42px; }
+      .session-sidebar.hidden {
+        width: 280px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .model-select { min-width: 100px; font-size: 12px; }
+      .model-select-group label { display: none; }
+      .toolbar-btn { padding: 4px 8px; }
+      .btn-newchat { padding: 4px 12px; font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="playground">
+    <!-- Header -->
+    <header class="pg-header">
+      <a href="/" class="pg-logo">AI 聚合平台</a>
+      <nav class="pg-nav">
+        <a href="playground.html" class="active">Playground</a>
+        <a href="console.html">控制台</a>
+        <a href="login.html">登录</a>
+      </nav>
+      <div class="pg-header-right">
+        <button class="pg-user-btn" title="用户">U</button>
+      </div>
+    </header>
+
+    <!-- Body -->
+    <div class="pg-body">
+      <!-- Session Sidebar -->
+      <aside id="sessionSidebar" class="session-sidebar hidden">
+        <div class="sidebar-header">
+          <h3>对话历史</h3>
+          <button id="closeSidebar" class="sidebar-close">&times;</button>
+        </div>
+        <div id="sessionList" class="session-list"></div>
+      </aside>
+
+      <!-- Main Area -->
+      <div class="pg-main">
+        <!-- Toolbar -->
+        <div class="pg-toolbar">
+          <button id="toggleSidebar" class="toolbar-btn" title="对话历史">&#9776;</button>
+          <div class="model-select-group">
+            <label>模型</label>
+            <select id="modelSelect" class="model-select"></select>
+          </div>
+          <div class="temp-control">
+            <label>温度</label>
+            <input type="range" id="tempSlider" class="temp-slider" min="0" max="2" step="0.1" value="0.7">
+            <span id="tempValue" class="temp-value">0.7</span>
+          </div>
+          <div class="toolbar-spacer"></div>
+          <button id="newChatBtn" class="btn-newchat">+ 新建对话</button>
+        </div>
+
+        <!-- Messages -->
+        <div id="messagesContainer" class="pg-messages">
+          <div class="empty-state">
+            <div class="empty-icon" style="background:#6366F1;color:#fff">AI</div>
+            <h3>AI 聚合平台</h3>
+            <p>选择模型，开始智能对话</p>
+            <p class="empty-hint">输入消息后按 Enter 发送</p>
+          </div>
+        </div>
+
+        <!-- Input -->
+        <div class="pg-input">
+          <div class="input-wrapper">
+            <textarea id="chatInput" placeholder="输入消息... (Enter 发送, Shift+Enter 换行)" rows="1"></textarea>
+            <button id="sendBtn" class="btn-send" disabled aria-label="发送">
+              <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+            </button>
+          </div>
+          <div class="input-footer">
+            <span id="modelInfo">就绪</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/playground.js"></script>
+</body>
+</html>
