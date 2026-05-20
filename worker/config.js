@@ -19,4 +19,9 @@ export default {
 
   RATE_LIMIT_WINDOW: 60,
   RATE_LIMIT_MAX: 30,
+
+  /* Payment */
+  TOPUP_PRESETS: [10, 50, 100, 200, 500],
+  TOKENS_PER_YUAN: 1_000_000,  // 1 元 = 100 万 tokens
+  XORPAY_NOTIFY_PATH: "/api/pay/callback",
 };

@@ -11,6 +11,11 @@ CHATANYWHERE_API_KEY = ""
 SILICONFLOW_API_KEY = ""
 QINIU_API_KEY = ""
 
+# XorPay 支付配置 (https://xorpay.com)
+XORPAY_AID = ""
+XORPAY_APP_SECRET = ""
+XORPAY_NOTIFY_URL = ""
+
 [[kv_namespaces]]
 binding = "USAGE"
 id = "3a8286274eec4dc9a2ae2e29b978c717"

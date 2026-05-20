@@ -434,6 +434,87 @@
     }
     .btn-topup:hover { background: rgba(255,255,255,0.3); }
 
+    /* ---------- Topup Modal ---------- */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal-card {
+      background: var(--white);
+      border-radius: var(--radius-xl);
+      padding: 32px;
+      width: 400px;
+      max-width: 90vw;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+      animation: fadeInUp 0.2s ease;
+      text-align: center;
+    }
+    .modal-card h3 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .modal-card p.sub { font-size: 14px; color: var(--gray-500); margin-bottom: 24px; }
+    .amount-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .amount-btn {
+      padding: 14px 8px;
+      border: 2px solid var(--gray-200);
+      border-radius: var(--radius-md);
+      background: var(--white);
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+      text-align: center;
+    }
+    .amount-btn .price { font-size: 18px; font-weight: 700; color: var(--gray-900); display: block; }
+    .amount-btn .label { font-size: 12px; color: var(--gray-400); margin-top: 2px; display: block; }
+    .amount-btn:hover { border-color: var(--primary); background: var(--primary-light); }
+    .amount-btn.selected { border-color: var(--primary); background: var(--primary-light); }
+    .qr-area {
+      min-height: 220px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+    .qr-area canvas, .qr-area img {
+      width: 200px; height: 200px;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-md);
+    }
+    .qr-area .hint { font-size: 13px; color: var(--gray-500); margin-top: 12px; }
+    .qr-area .status-badge {
+      display: inline-block; padding: 4px 16px; border-radius: 20px;
+      font-size: 13px; font-weight: 600; margin-top: 8px;
+    }
+    .status-badge.pending { background: #FFF7ED; color: #EA580C; }
+    .status-badge.success { background: #D1FAE5; color: #059669; }
+    .modal-actions { display: flex; gap: 10px; justify-content: center; }
+    .modal-actions button {
+      padding: 10px 24px; border-radius: var(--radius-md);
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      font-family: inherit; border: none; transition: all 0.15s;
+    }
+    .modal-actions .cancel-btn { background: var(--gray-100); color: var(--gray-700); }
+    .modal-actions .cancel-btn:hover { background: var(--gray-200); }
+    .modal-actions .pay-btn { background: var(--primary); color: var(--white); }
+    .modal-actions .pay-btn:hover { background: var(--primary-hover); }
+    .modal-close {
+      position: absolute; top: 16px; right: 16px;
+      background: none; border: none; font-size: 20px;
+      color: var(--gray-400); cursor: pointer; padding: 4px;
+    }
+    .modal-close:hover { color: var(--gray-600); }
+
     /* ---------- Settings ---------- */
     .settings-card {
       background: var(--white);
@@ -763,6 +844,58 @@
           </div>
         </div>
       </main>
+    </div>
+  </div>
+
+  <!-- ===== Top-up Modal ===== -->
+  <div class="modal-overlay" id="topupModal">
+    <div class="modal-card" style="position:relative;">
+      <button class="modal-close" id="modalClose">&times;</button>
+      <h3>账户充值</h3>
+      <p class="sub">选择充值金额，扫码支付立即到账</p>
+
+      <!-- Step 1: Select amount -->
+      <div id="topupStep1">
+        <div class="amount-grid" id="amountGrid">
+          <button class="amount-btn" data-amount="10">
+            <span class="price">¥10</span>
+            <span class="label">1000 万 Tokens</span>
+          </button>
+          <button class="amount-btn selected" data-amount="50">
+            <span class="price">¥50</span>
+            <span class="label">5000 万 Tokens</span>
+          </button>
+          <button class="amount-btn" data-amount="100">
+            <span class="price">¥100</span>
+            <span class="label">1 亿 Tokens</span>
+          </button>
+          <button class="amount-btn" data-amount="200">
+            <span class="price">¥200</span>
+            <span class="label">2 亿 Tokens</span>
+          </button>
+          <button class="amount-btn" data-amount="500">
+            <span class="price">¥500</span>
+            <span class="label">5 亿 Tokens</span>
+          </button>
+        </div>
+        <div class="modal-actions">
+          <button class="cancel-btn" id="topupCancel">取消</button>
+          <button class="pay-btn" id="topupConfirm">去支付</button>
+        </div>
+      </div>
+
+      <!-- Step 2: Show QR code -->
+      <div id="topupStep2" style="display:none;">
+        <div class="qr-area" id="qrArea">
+          <div id="qrPlaceholder" style="color:var(--gray-400);font-size:14px;">生成支付二维码中...</div>
+          <img id="qrImage" style="display:none;" alt="支付二维码">
+          <div class="hint">请使用微信或支付宝扫码支付</div>
+          <div id="qrStatus"></div>
+        </div>
+        <div class="modal-actions">
+          <button class="cancel-btn" id="topupDone">完成</button>
+        </div>
+      </div>
     </div>
   </div>
 

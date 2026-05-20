@@ -10,6 +10,7 @@ import {
   getTransactions, estimateTokens, getRemaining, consume,
   canUse, addPaid, consumePaid,
 } from "./usage.js";
+import { createOrder, generateOrderId, verifyCallback } from "./payment.js";
 import { STATIC_FILES } from "./static.js";
 
 /* ------------------------------------------------------------------ */
@@ -545,6 +546,136 @@ async function handleTransactions(user, env) {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Route handlers — Payment                                           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * POST /api/pay/create-order
+ * Body: { amount: 50 }  // 金额（元）
+ * 创建 XorPay 支付订单，返回支付二维码
+ */
+async function handleCreatePaymentOrder(user, env, request) {
+  const { amount } = await request.json().catch(() => ({}));
+  if (!amount || typeof amount !== "number" || amount <= 0) {
+    return error("amount 必须是正数");
+  }
+
+  const validAmounts = config.TOPUP_PRESETS;
+  if (!validAmounts.includes(amount)) {
+    return error(`金额必须是以下之一: ${validAmounts.join(", ")}`);
+  }
+
+  const orderId = generateOrderId();
+  const notifyUrl = (env.XORPAY_NOTIFY_URL || "") + config.XORPAY_NOTIFY_PATH;
+  const name = `AI API 充值 ${amount} 元`;
+
+  try {
+    const payInfo = await createOrder(name, amount, orderId, notifyUrl, env);
+
+    /* 保存订单信息到 KV */
+    const kv = env.USAGE;
+    if (kv) {
+      await kv.put(`order:${orderId}`, JSON.stringify({
+        userId: user.userId,
+        email: user.email,
+        amount,
+        status: "pending",
+        aoid: payInfo.aoid,
+        createdAt: new Date().toISOString(),
+      }));
+    }
+
+    return json({
+      success: true,
+      order_id: orderId,
+      qr: payInfo.qr,
+      aoid: payInfo.aoid,
+      expires_in: payInfo.expires_in,
+      amount,
+    });
+  } catch (e) {
+    return error(`支付创建失败: ${e.message}`, 502);
+  }
+}
+
+/**
+ * POST /api/pay/callback
+ * XorPay 支付回调（不需要 JWT 认证，用签名验证）
+ */
+async function handlePaymentCallback(request, env) {
+  const appSecret = env.XORPAY_APP_SECRET;
+  if (!appSecret) return error("支付未配置", 503);
+
+  let body;
+  try {
+    body = await request.formData();
+    body = Object.fromEntries(body.entries());
+  } catch {
+    return error("无效的回调数据", 400);
+  }
+
+  const valid = await verifyCallback(body, appSecret);
+  if (!valid) return error("签名验证失败", 403);
+
+  const { aoid, order_id: orderId, pay_price: payPrice } = body;
+  const kv = env.USAGE;
+  if (!kv) return error("服务暂不可用", 503);
+
+  /* 防止重复回调 */
+  const orderRaw = await kv.get(`order:${orderId}`);
+  if (!orderRaw) return error("订单不存在", 404);
+
+  const order = JSON.parse(orderRaw);
+  if (order.status === "completed") {
+    return new Response("ok");
+  }
+
+  /* 更新订单状态 */
+  order.status = "completed";
+  order.paidAt = new Date().toISOString();
+  order.aoid = aoid;
+  order.payPrice = parseFloat(payPrice);
+  await kv.put(`order:${orderId}`, JSON.stringify(order));
+
+  /* 充值到账：金额(元) → tokens */
+  const tokens = Math.floor(parseFloat(payPrice) * config.TOKENS_PER_YUAN);
+  const newBalance = await addBalance(order.userId, tokens, env);
+  await addTransaction(
+    order.userId, "topup", parseFloat(payPrice),
+    `支付充值 ${payPrice} 元 (到账 ${tokens.toLocaleString()} tokens, 订单 ${orderId})`,
+    env
+  );
+
+  return new Response("ok");
+}
+
+/**
+ * GET /api/pay/order-status?order_id=xxx
+ * 查询订单支付状态（前端轮询用）
+ */
+async function handleOrderStatus(user, env, request) {
+  const url = new URL(request.url);
+  const orderId = url.searchParams.get("order_id");
+  if (!orderId) return error("order_id 是必填的");
+
+  const kv = env.USAGE;
+  if (!kv) return error("服务暂不可用", 503);
+
+  const raw = await kv.get(`order:${orderId}`);
+  if (!raw) return error("订单不存在", 404);
+
+  const order = JSON.parse(raw);
+  if (order.userId !== user.userId) return error("无权访问此订单", 403);
+
+  return json({
+    order_id: orderId,
+    status: order.status,
+    amount: order.amount,
+    paid_at: order.paidAt || null,
+  });
+}
+
+/* ------------------------------------------------------------------ */
 /*  Legacy routes (preserved for backward compat)                       */
 /* ------------------------------------------------------------------ */
 
@@ -765,6 +896,27 @@ export default {
         const user = await authenticateJWT(request, env);
         if (!user) { response = error("未登录或令牌已过期", 401, "authentication_error"); }
         else { response = await handleTransactions(user, env); }
+      }
+
+      /* ================================================================ */
+      /*  Payment routes                                                    */
+      /* ================================================================ */
+
+      else if (method === "POST" && path === "/api/pay/create-order") {
+        const user = await authenticateJWT(request, env);
+        if (!user) { response = error("未登录或令牌已过期", 401, "authentication_error"); }
+        else { response = await handleCreatePaymentOrder(user, env, request); }
+      }
+
+      else if (method === "GET" && path === "/api/pay/order-status") {
+        const user = await authenticateJWT(request, env);
+        if (!user) { response = error("未登录或令牌已过期", 401, "authentication_error"); }
+        else { response = await handleOrderStatus(user, env, request); }
+      }
+
+      /* 支付回调不需要 JWT 认证 — 用签名验证 */
+      else if (method === "POST" && path === config.XORPAY_NOTIFY_PATH) {
+        response = await handlePaymentCallback(request, env);
       }
 
       /* ================================================================ */
