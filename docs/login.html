@@ -356,6 +356,7 @@
           <input type="checkbox" id="rememberMe">
           <label for="rememberMe">记住我</label>
         </div>
+        <div class="error-text" id="loginError" style="text-align:center;margin-bottom:12px;display:none;"></div>
         <button type="submit" class="btn-submit">登录</button>
       </form>
 
@@ -380,6 +381,7 @@
           <input type="checkbox" id="agreeTerms">
           <label for="agreeTerms">我已阅读并同意 <a href="#" onclick="return false;">服务条款</a></label>
         </div>
+        <div class="error-text" id="regError" style="text-align:center;margin-bottom:12px;display:none;"></div>
         <button type="submit" class="btn-submit">注册</button>
       </form>
 
@@ -406,6 +408,14 @@
   </div>
 
   <script>
+    /* ---------- Auth Check ---------- */
+    (function() {
+      const token = localStorage.getItem('auth_token');
+      if (token) {
+        window.location.href = 'playground.html';
+      }
+    })();
+
     /* ---------- DOM refs ---------- */
     const tabs = document.querySelectorAll('.auth-tab');
     const loginForm = document.getElementById('loginForm');
@@ -426,6 +436,9 @@
     const regPasswordErr = document.getElementById('regPasswordError');
     const regConfirmErr = document.getElementById('regConfirmError');
     const agreeTerms = document.getElementById('agreeTerms');
+
+    const loginError = document.getElementById('loginError');
+    const regError = document.getElementById('regError');
 
     const rememberMe = document.getElementById('rememberMe');
     const githubBtn = document.getElementById('githubLogin');
@@ -509,17 +522,32 @@
       successDesc.textContent = '即将跳转到 Playground...';
     }
 
-    loginForm.addEventListener('submit', (e) => {
+    loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!validateLogin()) return;
+
+      loginError.style.display = 'none';
+      loginError.textContent = '';
 
       const btn = loginForm.querySelector('.btn-submit');
       btn.classList.add('loading');
       btn.disabled = true;
 
-      setTimeout(() => {
-        btn.classList.remove('loading');
-        btn.disabled = false;
+      try {
+        const res = await fetch('https://ai-writer.ai-api-svc.workers.dev/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: loginEmail.value.trim(),
+            password: loginPassword.value
+          })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || data.message || '登录失败，请稍后重试');
+        }
 
         if (rememberMe.checked) {
           try {
@@ -527,15 +555,22 @@
           } catch (_) {}
         }
 
+        localStorage.setItem('auth_token', data.token);
+        localStorage.setItem('auth_user', JSON.stringify(data.user));
+
         showSuccess(true);
-        // Redirect after delay
         setTimeout(() => {
           window.location.href = 'playground.html';
         }, 1500);
-      }, 1200);
+      } catch (err) {
+        loginError.textContent = err.message;
+        loginError.style.display = 'block';
+        btn.classList.remove('loading');
+        btn.disabled = false;
+      }
     });
 
-    registerForm.addEventListener('submit', (e) => {
+    registerForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!validateRegister()) return;
 
@@ -544,18 +579,46 @@
         return;
       }
 
+      regError.style.display = 'none';
+      regError.textContent = '';
+
       const btn = registerForm.querySelector('.btn-submit');
       btn.classList.add('loading');
       btn.disabled = true;
 
-      setTimeout(() => {
-        btn.classList.remove('loading');
-        btn.disabled = false;
+      try {
+        const email = regEmail.value.trim();
+        const name = email.split('@')[0];
+
+        const res = await fetch('https://ai-writer.ai-api-svc.workers.dev/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email,
+            password: regPassword.value,
+            name
+          })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || data.message || '注册失败，请稍后重试');
+        }
+
+        localStorage.setItem('auth_token', data.token);
+        localStorage.setItem('auth_user', JSON.stringify(data.user));
+
         showSuccess(false);
         setTimeout(() => {
           window.location.href = 'playground.html';
         }, 1500);
-      }, 1200);
+      } catch (err) {
+        regError.textContent = err.message;
+        regError.style.display = 'block';
+        btn.classList.remove('loading');
+        btn.disabled = false;
+      }
     });
 
     /* ---------- Real-time Validation ---------- */

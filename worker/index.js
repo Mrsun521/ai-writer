@@ -7,8 +7,8 @@ import {
 import {
   getUserBalance, deductBalance, recordDailyUsage,
   getDailyUsage, getUserUsage, addBalance, addTransaction,
-  getTransactions, estimateTokens, getRemaining, consume,
-  canUse, addPaid, consumePaid,
+  getTransactions, estimateTokens, getRemaining,
+  consume, canUse, consumePaid,
 } from "./usage.js";
 import { createOrder, generateOrderId, verifyCallback } from "./payment.js";
 import { STATIC_FILES } from "./static.js";
@@ -24,21 +24,29 @@ function json(data, status = 200) {
   });
 }
 
+const COMMON_SECURITY_HEADERS = {
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Referrer-Policy": "no-referrer",
+  "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
+  "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https:; font-src 'self' data:;",
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+};
+
 function error(msg, status = 400, type = "invalid_request_error") {
   return json({
     error: { message: msg, type, param: null, code: null },
   }, status);
 }
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-  "Access-Control-Max-Age": "86400",
-};
-
-function cors(resp) {
-  for (const [k, v] of Object.entries(CORS_HEADERS)) {
+function cors(resp, env) {
+  const origin = (env?.FRONTEND_URL) || "https://mrsun521.github.io";
+  resp.headers.set("Access-Control-Allow-Origin", origin);
+  resp.headers.set("Vary", "Origin");
+  resp.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
+  resp.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  resp.headers.set("Access-Control-Max-Age", "86400");
+  for (const [k, v] of Object.entries(COMMON_SECURITY_HEADERS)) {
     resp.headers.set(k, v);
   }
   return resp;
@@ -93,7 +101,8 @@ async function authenticateJWT(request, env) {
   if (!auth || !auth.startsWith("Bearer ")) return null;
 
   const token = auth.slice(7).trim();
-  const payload = await verifyJWT(token, config.JWT_SECRET);
+  const jwtSecret = env.JWT_SECRET || config.JWT_SECRET;
+  const payload = await verifyJWT(token, jwtSecret);
   if (!payload) return null;
 
   const kv = env.USAGE;
@@ -186,8 +195,7 @@ async function handleChatCompletions(request, env) {
   });
 
   if (!upstreamResp.ok) {
-    const detail = await upstreamResp.text().catch(() => "");
-    return error(`上游 API 错误 ${upstreamResp.status}: ${detail}`, 502, "api_error");
+    return error("上游 API 请求失败", 502, "api_error");
   }
 
   if (isStream) {
@@ -205,11 +213,7 @@ async function handleNonStreamingResponse(upstreamResp, user, model, env) {
   let outputTokens = data.usage?.completion_tokens || 0;
 
   /* Fallback: estimate from text */
-  if (!inputTokens && data.choices?.[0]?.message?.content) {
-    inputTokens = estimateTokens(
-      data.choices.map((c) => c.message?.content || "").join(""),
-    );
-  }
+  /* Input tokens: upstream didn't provide counts, and output content is not a valid proxy for input -- use a safe default */
   if (!outputTokens && data.choices?.[0]?.message?.content) {
     outputTokens = estimateTokens(
       data.choices.map((c) => c.message?.content || "").join(""),
@@ -220,7 +224,6 @@ async function handleNonStreamingResponse(upstreamResp, user, model, env) {
 
   /* Deduct balance & record usage */
   const newBalance = await deductBalance(user.userId, inputTokens, outputTokens, model, env);
-  await recordDailyUsage(user.userId, model, inputTokens, outputTokens, env);
 
   if (newBalance < 0) {
     return json({
@@ -228,6 +231,8 @@ async function handleNonStreamingResponse(upstreamResp, user, model, env) {
       usage: { prompt_tokens: inputTokens, completion_tokens: outputTokens, total_tokens: inputTokens + outputTokens },
     });
   }
+
+  await recordDailyUsage(user.userId, model, inputTokens, outputTokens, env);
 
   return json({
     ...data,
@@ -287,8 +292,10 @@ async function handleStreamingResponse(upstreamResp, user, model, env) {
       if (!inputTokens) inputTokens = 50;
       if (!outputTokens) outputTokens = estimateTokens(accumulatedContent) || 50;
 
-      await deductBalance(user.userId, inputTokens, outputTokens, model, env);
-      await recordDailyUsage(user.userId, model, inputTokens, outputTokens, env);
+      const newBal = await deductBalance(user.userId, inputTokens, outputTokens, model, env);
+      if (newBal >= 0) {
+        await recordDailyUsage(user.userId, model, inputTokens, outputTokens, env);
+      }
     } catch (e) {
       console.error("Streaming error:", e);
     } finally {
@@ -296,13 +303,17 @@ async function handleStreamingResponse(upstreamResp, user, model, env) {
     }
   })();
 
-  return new Response(readable, {
+  const streamResp = new Response(readable, {
     headers: {
       "Content-Type": "text/event-stream;charset=utf-8",
       "Cache-Control": "no-cache",
       Connection: "keep-alive",
     },
   });
+  for (const [k, v] of Object.entries(COMMON_SECURITY_HEADERS)) {
+    streamResp.headers.set(k, v);
+  }
+  return streamResp;
 }
 
 /* ------------------------------------------------------------------ */
@@ -329,6 +340,12 @@ async function handleListModels() {
 /* ------------------------------------------------------------------ */
 
 async function handleRegister(request, env) {
+  const ip = clientIP(request);
+  const allowed = await checkRateLimit(`register:${ip}`, env, { max: 5, window: 300 });
+  if (!allowed) {
+    return error("注册请求过于频繁，请稍后再试", 429);
+  }
+
   let body;
   try {
     body = await request.json();
@@ -349,7 +366,7 @@ async function handleRegister(request, env) {
 
   const existing = await kv.get(`user:${email}`);
   if (existing) {
-    return error("该邮箱已注册", 409);
+    return error("注册失败，请检查信息后重试", 400);
   }
 
   const passwordHash = await hashPassword(password);
@@ -363,7 +380,7 @@ async function handleRegister(request, env) {
 
   await kv.put(`user:${email}`, JSON.stringify(user));
 
-  const token = await signJWT({ sub: email, email, name: user.name }, config.JWT_SECRET);
+  const token = await signJWT({ sub: email, email, name: user.name }, env.JWT_SECRET || config.JWT_SECRET);
 
   return json({
     token,
@@ -372,6 +389,12 @@ async function handleRegister(request, env) {
 }
 
 async function handleLogin(request, env) {
+  const ip = clientIP(request);
+  const allowed = await checkRateLimit(`login:${ip}`, env, { max: 10, window: 300 });
+  if (!allowed) {
+    return error("登录请求过于频繁，请稍后再试", 429);
+  }
+
   let body;
   try {
     body = await request.json();
@@ -398,7 +421,7 @@ async function handleLogin(request, env) {
     return error("邮箱或密码错误", 401, "authentication_error");
   }
 
-  const token = await signJWT({ sub: email, email, name: user.name }, config.JWT_SECRET);
+  const token = await signJWT({ sub: email, email, name: user.name }, env.JWT_SECRET || config.JWT_SECRET);
 
   return json({
     token,
@@ -528,7 +551,7 @@ async function handleTopup(user, env, request) {
     return error("amount 必须是正数");
   }
 
-  const tokens = Math.floor(amount * 1000000);
+  const tokens = Math.floor(amount * config.TOKENS_PER_YUAN);
   const newBalance = await addBalance(user.userId, tokens, env);
   await addTransaction(user.userId, "topup", amount, `充值 ${amount} 元 (${tokens.toLocaleString()} tokens)`, env);
 
@@ -590,7 +613,8 @@ async function handleCreatePaymentOrder(user, env, request) {
       amount,
     });
   } catch (e) {
-    return error(`支付创建失败: ${e.message}`, 502);
+    console.error("Payment error:", e);
+    return error("支付创建失败，请稍后重试", 502);
   }
 }
 
@@ -704,43 +728,50 @@ async function handleLegacyGenerate(request, env) {
     return error("提示词构建失败", 500);
   }
 
-  try {
-    const apiKey = env.DEEPSEEK_API_KEY;
-    if (!apiKey) throw new Error("DEEPSEEK_API_KEY 未配置");
-
-    const resp = await fetch("https://api.deepseek.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({ model: "deepseek-chat", messages, temperature: 0.7, max_tokens: 2048 }),
-    });
-
-    if (!resp.ok) {
-      const detail = await resp.text().catch(() => "");
-      throw new Error(`DeepSeek API 错误 ${resp.status}: ${detail}`);
-    }
-
-    const data = await resp.json();
-    const content = data.choices?.[0]?.message?.content;
-    if (!content) throw new Error("DeepSeek 返回了空结果");
-
-    const remaining = await getRemaining(ip, env);
-    let usageRemaining;
-    if (remaining > 0) {
-      usageRemaining = await consume(ip, env);
-      const record = await (env?.USAGE?.get(`usage:${ip}`)).catch(() => null);
-      const paid = record ? JSON.parse(record).paid || 0 : 0;
-      usageRemaining += paid;
-    } else {
-      usageRemaining = await consumePaid(ip, env);
-    }
-
-    return json({ content, usage_remaining: usageRemaining });
-  } catch (e) {
-    return error(e.message, 502);
+  const apiKey = env.DEEPSEEK_API_KEY;
+  if (!apiKey) {
+    return error("上游服务未配置", 502);
   }
+
+  const resp = await fetch("https://api.deepseek.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({ model: "deepseek-chat", messages, temperature: 0.7, max_tokens: 2048 }),
+  }).catch(() => null);
+
+  if (!resp) {
+    return error("上游 API 请求失败", 502);
+  }
+
+  if (!resp.ok) {
+    return error("上游 API 请求失败", 502);
+  }
+
+  const data = await resp.json().catch(() => null);
+  if (!data) {
+    return error("上游 API 返回无效数据", 502);
+  }
+
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) {
+    return error("上游 API 返回了空结果", 502);
+  }
+
+  const remaining = await getRemaining(ip, env);
+  let usageRemaining;
+  if (remaining > 0) {
+    usageRemaining = await consume(ip, env);
+    const record = await (env?.USAGE?.get(`usage:${ip}`)).catch(() => null);
+    const paid = record ? JSON.parse(record).paid || 0 : 0;
+    usageRemaining += paid;
+  } else {
+    usageRemaining = await consumePaid(ip, env);
+  }
+
+  return json({ content, usage_remaining: usageRemaining });
 }
 
 async function handleLegacyUsage(request, env) {
@@ -756,23 +787,6 @@ async function handleLegacyUsage(request, env) {
     paid_remaining: paid,
     total: config.FREE_TRIALS,
   });
-}
-
-async function handleLegacyVerifyPayment(request, env) {
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return error("请求体必须是有效的 JSON", 400);
-  }
-
-  const { ip, amount } = body;
-  if (!ip || typeof amount !== "number" || amount <= 0) {
-    return error("缺少必填字段 ip 或无效的 amount", 400);
-  }
-
-  const newBalance = await addPaid(ip, amount, env);
-  return json({ success: true, new_balance: newBalance });
 }
 
 /* ------------------------------------------------------------------ */
@@ -796,10 +810,14 @@ function serveStatic(path) {
   const ext = key.match(/\.\w+$/) ? key.match(/\.\w+$/)[0] : ".html";
   const contentType = CONTENT_TYPES[ext] || "text/html;charset=utf-8";
 
-  return new Response(content, {
+  const resp = new Response(content, {
     status: 200,
     headers: { "content-type": contentType },
   });
+  for (const [k, v] of Object.entries(COMMON_SECURITY_HEADERS)) {
+    resp.headers.set(k, v);
+  }
+  return resp;
 }
 
 /* ------------------------------------------------------------------ */
@@ -810,7 +828,7 @@ export default {
   async fetch(request, env) {
     /* CORS preflight */
     if (request.method === "OPTIONS") {
-      return cors(new Response(null, { status: 204 }));
+      return cors(new Response(null, { status: 204 }), env);
     }
 
     const url = new URL(request.url);
@@ -932,10 +950,6 @@ export default {
         response = await handleLegacyUsage(request, env);
       }
 
-      else if (method === "POST" && path === "/api/verify-payment") {
-        response = await handleLegacyVerifyPayment(request, env);
-      }
-
       /* ================================================================ */
       /*  Fallback: static files or 404                                    */
       /* ================================================================ */
@@ -948,9 +962,9 @@ export default {
       }
     } catch (e) {
       console.error("Unhandled error:", e);
-      response = error(`服务器内部错误: ${e.message}`, 500, "server_error");
+      response = error("服务器内部错误", 500, "server_error");
     }
 
-    return cors(response);
+    return cors(response, env);
   },
 };
