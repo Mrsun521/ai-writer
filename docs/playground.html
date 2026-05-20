@@ -553,6 +553,61 @@
       .toolbar-btn { padding: 4px 8px; }
       .btn-newchat { padding: 4px 12px; font-size: 12px; }
     }
+    /* ---------- API Key Banner ---------- */
+    .apikey-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 20px;
+      background: #fefce8;
+      border-bottom: 1px solid #fde68a;
+      font-size: 13px;
+      color: #92400e;
+      flex-shrink: 0;
+    }
+    .apikey-bar label { white-space: nowrap; font-weight: 500; }
+    .apikey-bar input {
+      flex: 1;
+      max-width: 340px;
+      padding: 6px 10px;
+      border: 1px solid #fcd34d;
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      outline: none;
+      background: #fff;
+    }
+    .apikey-bar input:focus { border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,0.15); }
+    .apikey-bar .apikey-status {
+      font-size: 12px;
+      color: #65a30d;
+      white-space: nowrap;
+    }
+    .apikey-bar .apikey-status.error { color: #dc2626; }
+    .apikey-save-btn {
+      padding: 6px 14px;
+      background: #f59e0b;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+    .apikey-save-btn:hover { background: #d97706; }
+    .apikey-clear-btn {
+      background: none;
+      border: 1px solid #fcd34d;
+      border-radius: 4px;
+      padding: 5px 10px;
+      cursor: pointer;
+      color: #92400e;
+      font-size: 12px;
+      font-family: inherit;
+    }
+    .apikey-clear-btn:hover { background: #fef3c7; }
   </style>
 </head>
 <body>
@@ -625,6 +680,7 @@
     </div>
   </div>
 
+  <script src="js/api.js"></script>
   <script src="js/playground.js"></script>
 </body>
 </html>

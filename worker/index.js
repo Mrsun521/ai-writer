@@ -29,7 +29,7 @@ const COMMON_SECURITY_HEADERS = {
   "X-Frame-Options": "DENY",
   "Referrer-Policy": "no-referrer",
   "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
-  "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https:; font-src 'self' data:;",
+  "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https: wss:; font-src 'self' data:;",
   "Permissions-Policy": "camera=(), microphone=(), geolocation=(), interest-cohort=()",
 };
 
@@ -549,6 +549,10 @@ async function handleTopup(user, env, request) {
   const { amount } = body;
   if (!amount || typeof amount !== "number" || amount <= 0) {
     return error("amount 必须是正数");
+  }
+
+  if (!config.TOPUP_PRESETS.includes(amount)) {
+    return error(`金额必须是以下之一: ${config.TOPUP_PRESETS.join(", ")}`);
   }
 
   const tokens = Math.floor(amount * config.TOKENS_PER_YUAN);

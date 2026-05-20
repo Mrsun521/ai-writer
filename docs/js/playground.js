@@ -11,6 +11,110 @@ const MODELS = [
   { id: 'ollama-qwen', name: 'Ollama qwen2.5:7b', provider: '本地', icon: 'OL', color: '#6B7280', desc: '本地离线' },
 ];
 
+/* ---------- Model ID Mapping (playground -> API) ---------- */
+
+const MODEL_ID_MAP = {
+  'deepseek-v3': 'deepseek-v3',
+  'glm-4-flash': 'glm-4-flash',
+  'qwen3-27b': 'qwen3-27b',
+  'gpt-4o-mini': 'gpt-4o-mini',
+  'silicon-flow': 'qwen2.5-7b',
+  'claude-sonnet': 'claude-sonnet-4',
+  'gemini-pro': 'gemini-2.5-pro',
+  'ollama-qwen': 'ollama-qwen2.5',
+};
+
+function getApiModelId(playgroundId) {
+  return MODEL_ID_MAP[playgroundId] || playgroundId;
+}
+
+/* ---------- API Key Management ---------- */
+
+const APIKEY_STORAGE_KEY = 'playground_api_key';
+
+function hasApiKey() {
+  return !!localStorage.getItem(APIKEY_STORAGE_KEY);
+}
+
+function getApiKey() {
+  return localStorage.getItem(APIKEY_STORAGE_KEY) || '';
+}
+
+function saveApiKey(key) {
+  localStorage.setItem(APIKEY_STORAGE_KEY, key);
+  API_CLIENT.setApiKey(key);
+}
+
+function clearApiKey() {
+  localStorage.removeItem(APIKEY_STORAGE_KEY);
+  API_CLIENT.setApiKey('');
+}
+
+function renderApiKeyBar() {
+  // Remove existing bar if any
+  const existing = document.getElementById('apikeyBar');
+  if (existing) existing.remove();
+
+  const bar = document.createElement('div');
+  bar.id = 'apikeyBar';
+  bar.className = 'apikey-bar';
+  bar.innerHTML =
+    '<label>API Key</label>' +
+    '<input type="password" id="apikeyInput" placeholder="sk-..." value="' + escapeHtml(getApiKey()) + '">' +
+    '<button class="apikey-save-btn" id="apikeySaveBtn">保存</button>' +
+    '<button class="apikey-clear-btn" id="apikeyClearBtn">清除</button>' +
+    '<span class="apikey-status" id="apikeyStatus"></span>';
+
+  // Insert after toolbar
+  const toolbar = document.querySelector('.pg-toolbar');
+  if (toolbar && toolbar.parentNode) {
+    toolbar.parentNode.insertBefore(bar, toolbar.nextSibling);
+  } else {
+    // Fallback: insert at top of messages container
+    const container = els.messagesContainer;
+    if (container && container.parentNode) {
+      container.parentNode.insertBefore(bar, container);
+    }
+  }
+
+  // Bind events
+  document.getElementById('apikeySaveBtn').addEventListener('click', () => {
+    const input = document.getElementById('apikeyInput');
+    const key = input.value.trim();
+    if (!key) {
+      setApiKeyStatus('请输入 API Key', true);
+      return;
+    }
+    saveApiKey(key);
+    setApiKeyStatus('已保存');
+    setTimeout(() => {
+      const barEl = document.getElementById('apikeyBar');
+      if (barEl) barEl.remove();
+    }, 1000);
+  });
+
+  document.getElementById('apikeyClearBtn').addEventListener('click', () => {
+    clearApiKey();
+    document.getElementById('apikeyInput').value = '';
+    setApiKeyStatus('已清除');
+  });
+
+  document.getElementById('apikeyInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      document.getElementById('apikeySaveBtn').click();
+    }
+  });
+}
+
+function setApiKeyStatus(msg, isError) {
+  const el = document.getElementById('apikeyStatus');
+  if (el) {
+    el.textContent = msg;
+    el.className = 'apikey-status' + (isError ? ' error' : '');
+  }
+}
+
 /* ---------- Mock Responses ---------- */
 
 function getMockResponse(modelId, userMessage) {
@@ -501,37 +605,124 @@ async function sendMessage() {
   // Show typing indicator
   const typingEl = showTypingIndicator();
 
-  // Simulate network delay
-  await sleep(600 + Math.random() * 900);
-
-  // Get mock response
   const modelId = session.model;
-  const responseText = getMockResponse(modelId, text);
 
-  // Remove typing
-  removeTypingIndicator(typingEl);
+  // ------ Try real API ------
+  let responseText = '';
 
-  // Add assistant message
-  const assistantMsg = {
-    role: 'assistant',
-    content: responseText,
-    timestamp: Date.now(),
-    model: modelId,
-  };
-  session.messages.push(assistantMsg);
+  // Only attempt real API if a key is configured
+  if (hasApiKey()) {
+    try {
+      const apiModelId = getApiModelId(modelId);
 
-  const asstEl = createMessageElement(assistantMsg);
-  els.messagesContainer.appendChild(asstEl);
-  scrollToBottom();
+      // Build message history for context
+      const history = session.messages.map(m => ({
+        role: m.role,
+        content: m.content,
+      }));
 
-  // Typewriter effect on the content
-  const contentEl = asstEl.querySelector('.msg-content');
-  if (contentEl) {
-    const originalHtml = renderMarkdown(responseText);
-    const tw = new Typewriter(contentEl);
-    state.currentTypewriter = tw;
-    await tw.start(originalHtml, 15);
-    state.currentTypewriter = null;
+      const stream = API_CLIENT.chatCompletionStream({
+        model: apiModelId,
+        messages: history,
+        temperature: session.temperature,
+      });
+
+      // Remove typing indicator
+      removeTypingIndicator(typingEl);
+
+      // Create assistant message element (content starts empty)
+      const assistantMsg = {
+        role: 'assistant',
+        content: '',
+        timestamp: Date.now(),
+        model: modelId,
+      };
+      session.messages.push(assistantMsg);
+
+      const asstEl = createMessageElement(assistantMsg);
+      els.messagesContainer.appendChild(asstEl);
+      scrollToBottom();
+
+      const contentEl = asstEl.querySelector('.msg-content');
+
+      // Process stream chunks
+      let fullContent = '';
+
+      // Inner try-catch: if streaming fails mid-way, keep partial content
+      try {
+        for await (const chunk of stream) {
+          const delta = chunk.choices?.[0]?.delta?.content || '';
+          const finishReason = chunk.choices?.[0]?.finish_reason;
+
+          if (delta) {
+            fullContent += delta;
+          }
+
+          // Render progressively
+          if (delta && contentEl) {
+            contentEl.innerHTML = renderMarkdown(fullContent);
+            scrollToBottom();
+          }
+
+          if (finishReason === 'stop') {
+            break;
+          }
+        }
+      } catch (streamErr) {
+        console.warn('Stream interrupted, partial content preserved:', streamErr.message);
+      }
+
+      // Final render (even if partial)
+      if (contentEl) {
+        contentEl.innerHTML = renderMarkdown(fullContent);
+      }
+      responseText = fullContent;
+      assistantMsg.content = fullContent;
+
+    } catch (err) {
+      console.warn('API call failed to start, falling back to mock:', err.message);
+      // Fall through to mock - typing indicator is still showing, no message committed
+    }
+  } else {
+    // No API key, show the key banner if not already visible
+    if (!document.getElementById('apikeyBar')) {
+      renderApiKeyBar();
+    }
+  }
+
+  // ------ Fallback to mock if API failed or no key ------
+  if (!responseText) {
+    // Simulate network delay for mock
+    await sleep(600 + Math.random() * 900);
+
+    // Get mock response
+    responseText = getMockResponse(modelId, text);
+
+    // Remove typing
+    removeTypingIndicator(typingEl);
+
+    // Add assistant message
+    const assistantMsg = {
+      role: 'assistant',
+      content: responseText,
+      timestamp: Date.now(),
+      model: modelId,
+    };
+    session.messages.push(assistantMsg);
+
+    const asstEl = createMessageElement(assistantMsg);
+    els.messagesContainer.appendChild(asstEl);
+    scrollToBottom();
+
+    // Typewriter effect on the content
+    const contentEl = asstEl.querySelector('.msg-content');
+    if (contentEl) {
+      const originalHtml = renderMarkdown(responseText);
+      const tw = new Typewriter(contentEl);
+      state.currentTypewriter = tw;
+      await tw.start(originalHtml, 15);
+      state.currentTypewriter = null;
+    }
   }
 
   state.isSending = false;
@@ -730,6 +921,13 @@ function init() {
   els.modelInfo = document.getElementById('modelInfo');
 
   loadState();
+
+  // Initialize API key from localStorage
+  const savedKey = getApiKey();
+  if (savedKey) {
+    API_CLIENT.setApiKey(savedKey);
+  }
+
   renderModelSelector();
 
   els.tempSlider.value = state.temperature;
@@ -744,6 +942,11 @@ function init() {
   renderSessionList();
   bindEvents();
   updateInputFooter();
+
+  // Show API key banner if no key configured
+  if (!savedKey && !document.getElementById('apikeyBar')) {
+    renderApiKeyBar();
+  }
 
   // Focus input on load
   setTimeout(() => els.chatInput.focus(), 100);
