@@ -11,10 +11,11 @@ CHATANYWHERE_API_KEY = ""
 SILICONFLOW_API_KEY = ""
 QINIU_API_KEY = ""
 
-# XorPay 支付配置 (https://xorpay.com)
-XORPAY_AID = ""
-XORPAY_APP_SECRET = ""
-XORPAY_NOTIFY_URL = ""
+# 爱发电支付配置 (https://afdian.net/dashboard/dev)
+AFDIAN_USER_ID = ""
+AFDIAN_TOKEN = ""
+# JSON 格式: {"plan_xxxxx":{"amount":10},"plan_yyyyy":{"amount":50}}
+AFDIAN_PLANS = ""
 
 [[kv_namespaces]]
 binding = "USAGE"

@@ -456,14 +456,16 @@ function bindConsoleEvents() {
     });
   });
 
-  // Top-up modal
+  // Top-up modal — 爱发电支付
   const topupModal = document.getElementById('topupModal');
   const topupStep1 = document.getElementById('topupStep1');
   const topupStep2 = document.getElementById('topupStep2');
   const amountGrid = document.getElementById('amountGrid');
-  const qrImage = document.getElementById('qrImage');
   const qrPlaceholder = document.getElementById('qrPlaceholder');
   const qrStatus = document.getElementById('qrStatus');
+  const payLinkArea = document.getElementById('payLinkArea');
+  const payUrlLink = document.getElementById('payUrlLink');
+  const payOrderId = document.getElementById('payOrderId');
   let selectedAmount = 50;
   let currentOrderId = null;
   let pollTimer = null;
@@ -482,9 +484,9 @@ function bindConsoleEvents() {
     topupModal.classList.add('show');
     topupStep1.style.display = 'block';
     topupStep2.style.display = 'none';
-    qrImage.style.display = 'none';
     qrPlaceholder.textContent = '选择金额开始充值';
     qrStatus.innerHTML = '';
+    payLinkArea.style.display = 'none';
   });
 
   // Close modal
@@ -494,6 +496,7 @@ function bindConsoleEvents() {
   }
   document.getElementById('modalClose')?.addEventListener('click', closeModal);
   document.getElementById('topupCancel')?.addEventListener('click', closeModal);
+  document.getElementById('topupCancel2')?.addEventListener('click', closeModal);
   topupModal?.addEventListener('click', (e) => {
     if (e.target === topupModal) closeModal();
   });
@@ -503,7 +506,7 @@ function bindConsoleEvents() {
     topupStep1.style.display = 'none';
     topupStep2.style.display = 'block';
     qrPlaceholder.textContent = '正在创建支付订单...';
-    qrImage.style.display = 'none';
+    payLinkArea.style.display = 'none';
     qrStatus.innerHTML = '<span class="status-badge pending">等待支付</span>';
 
     try {
@@ -517,21 +520,12 @@ function bindConsoleEvents() {
       if (resp.ok) {
         const data = await resp.json();
         currentOrderId = data.order_id;
-        // Show QR code
-        qrImage.src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(data.qr);
-        qrImage.onload = () => {
-          qrImage.style.display = 'block';
-          qrPlaceholder.style.display = 'none';
-        };
-        qrImage.onerror = () => {
-          // QR API unavailable, show raw URL
-          qrPlaceholder.innerHTML = `
-            <p style="font-size:13px;color:var(--gray-500);margin-bottom:8px;">无法加载二维码图片</p>
-            <p style="font-size:12px;color:var(--gray-400);word-break:break-all;">请复制以下链接到微信打开：</p>
-            <code style="font-size:11px;background:var(--gray-100);padding:8px;border-radius:4px;display:inline-block;max-width:100%;word-break:break-all;">${data.qr}</code>
-          `;
-          qrPlaceholder.style.display = 'block';
-        };
+
+        // Show pay link
+        qrPlaceholder.style.display = 'none';
+        payUrlLink.href = data.pay_url;
+        payOrderId.textContent = '订单号: ' + data.order_id;
+        payLinkArea.style.display = 'block';
 
         // Poll payment status
         pollTimer = setInterval(async () => {
@@ -543,6 +537,7 @@ function bindConsoleEvents() {
                 clearInterval(pollTimer);
                 pollTimer = null;
                 qrStatus.innerHTML = '<span class="status-badge success">支付成功！</span>';
+                payLinkArea.style.display = 'none';
                 // Refresh balance
                 const usageResp = await fetch('/api/usage');
                 if (usageResp.ok) {
@@ -562,17 +557,18 @@ function bindConsoleEvents() {
       }
     } catch (_) {
       // Mock mode: simulate payment
-      qrPlaceholder.innerHTML = `
-        <div style="width:200px;height:200px;border:2px dashed var(--gray-300);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-direction:column;background:var(--gray-50);">
-          <span style="font-size:48px;">&#128179;</span>
-          <span style="font-size:13px;color:var(--gray-500);margin-top:8px;">模拟支付</span>
-        </div>
-      `;
-      qrPlaceholder.style.display = 'block';
+      qrPlaceholder.style.display = 'none';
+      payUrlLink.href = '#';
+      payUrlLink.textContent = '模拟支付 ¥' + selectedAmount;
+      payUrlLink.style.pointerEvents = 'none';
+      payUrlLink.style.opacity = '0.7';
+      payOrderId.textContent = '模拟模式 — 5 秒后自动到账';
+      payLinkArea.style.display = 'block';
 
       // Simulate payment after 5 seconds
       setTimeout(() => {
         qrStatus.innerHTML = '<span class="status-badge success">支付成功！（模拟）</span>';
+        payLinkArea.style.display = 'none';
         consoleState.balance += selectedAmount;
         consoleState.transactions.unshift({
           id: 'tx_' + randomStr(8),
@@ -588,9 +584,6 @@ function bindConsoleEvents() {
       }, 5000);
     }
   });
-
-  // Done button
-  document.getElementById('topupDone')?.addEventListener('click', closeModal);
 
   // Click outside sidebar to close (mobile)
   document.addEventListener('click', (e) => {

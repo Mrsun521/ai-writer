@@ -551,8 +551,8 @@ async function handleTransactions(user, env) {
 
 /**
  * POST /api/pay/create-order
- * Body: { amount: 50 }  // 金额（元）
- * 创建 XorPay 支付订单，返回支付二维码
+ * Body: { amount: 50 }
+ * 创建支付订单，返回爱发电支付链接
  */
 async function handleCreatePaymentOrder(user, env, request) {
   const { amount } = await request.json().catch(() => ({}));
@@ -566,11 +566,9 @@ async function handleCreatePaymentOrder(user, env, request) {
   }
 
   const orderId = generateOrderId();
-  const notifyUrl = (env.XORPAY_NOTIFY_URL || "") + config.XORPAY_NOTIFY_PATH;
-  const name = `AI API 充值 ${amount} 元`;
 
   try {
-    const payInfo = await createOrder(name, amount, orderId, notifyUrl, env);
+    const payInfo = await createOrder(user.userId, amount, orderId, env);
 
     /* 保存订单信息到 KV */
     const kv = env.USAGE;
@@ -580,7 +578,7 @@ async function handleCreatePaymentOrder(user, env, request) {
         email: user.email,
         amount,
         status: "pending",
-        aoid: payInfo.aoid,
+        payUrl: payInfo.payUrl,
         createdAt: new Date().toISOString(),
       }));
     }
@@ -588,9 +586,7 @@ async function handleCreatePaymentOrder(user, env, request) {
     return json({
       success: true,
       order_id: orderId,
-      qr: payInfo.qr,
-      aoid: payInfo.aoid,
-      expires_in: payInfo.expires_in,
+      pay_url: payInfo.payUrl,
       amount,
     });
   } catch (e) {
@@ -600,53 +596,58 @@ async function handleCreatePaymentOrder(user, env, request) {
 
 /**
  * POST /api/pay/callback
- * XorPay 支付回调（不需要 JWT 认证，用签名验证）
+ * 爱发电支付回调（不需要 JWT 认证，用 query_order API 验证）
  */
 async function handlePaymentCallback(request, env) {
-  const appSecret = env.XORPAY_APP_SECRET;
-  if (!appSecret) return error("支付未配置", 503);
+  if (!env.AFDIAN_TOKEN || !env.AFDIAN_USER_ID) {
+    return error("支付未配置", 503);
+  }
 
   let body;
   try {
-    body = await request.formData();
-    body = Object.fromEntries(body.entries());
+    body = await request.json();
   } catch {
     return error("无效的回调数据", 400);
   }
 
-  const valid = await verifyCallback(body, appSecret);
-  if (!valid) return error("签名验证失败", 403);
+  const result = await verifyCallback(body, env);
+  if (!result || !result.valid) {
+    return error("回调验证失败", 403);
+  }
 
-  const { aoid, order_id: orderId, pay_price: payPrice } = body;
+  const { customOrderId, totalAmount } = result.order;
   const kv = env.USAGE;
   if (!kv) return error("服务暂不可用", 503);
 
   /* 防止重复回调 */
-  const orderRaw = await kv.get(`order:${orderId}`);
+  const orderRaw = await kv.get(`order:${customOrderId}`);
   if (!orderRaw) return error("订单不存在", 404);
 
   const order = JSON.parse(orderRaw);
   if (order.status === "completed") {
-    return new Response("ok");
+    return json({ ec: 200, em: "success" });
+  }
+
+  /* 金额核对 */
+  if (Math.abs(order.amount - totalAmount) > 0.01) {
+    return error("金额不匹配", 400);
   }
 
   /* 更新订单状态 */
   order.status = "completed";
   order.paidAt = new Date().toISOString();
-  order.aoid = aoid;
-  order.payPrice = parseFloat(payPrice);
-  await kv.put(`order:${orderId}`, JSON.stringify(order));
+  await kv.put(`order:${customOrderId}`, JSON.stringify(order));
 
-  /* 充值到账：金额(元) → tokens */
-  const tokens = Math.floor(parseFloat(payPrice) * config.TOKENS_PER_YUAN);
+  /* 充值到账 */
+  const tokens = Math.floor(order.amount * config.TOKENS_PER_YUAN);
   const newBalance = await addBalance(order.userId, tokens, env);
   await addTransaction(
-    order.userId, "topup", parseFloat(payPrice),
-    `支付充值 ${payPrice} 元 (到账 ${tokens.toLocaleString()} tokens, 订单 ${orderId})`,
+    order.userId, "topup", order.amount,
+    `爱发电充值 ${order.amount} 元 (到账 ${tokens.toLocaleString()} tokens)`,
     env
   );
 
-  return new Response("ok");
+  return json({ ec: 200, em: "success" });
 }
 
 /**
@@ -914,8 +915,8 @@ export default {
         else { response = await handleOrderStatus(user, env, request); }
       }
 
-      /* 支付回调不需要 JWT 认证 — 用签名验证 */
-      else if (method === "POST" && path === config.XORPAY_NOTIFY_PATH) {
+      /* 支付回调不需要 JWT 认证 — 用 query_order API 验证 */
+      else if (method === "POST" && path === config.PAY_NOTIFY_PATH) {
         response = await handlePaymentCallback(request, env);
       }
 

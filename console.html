@@ -508,6 +508,14 @@
     .modal-actions .cancel-btn:hover { background: var(--gray-200); }
     .modal-actions .pay-btn { background: var(--primary); color: var(--white); }
     .modal-actions .pay-btn:hover { background: var(--primary-hover); }
+    .btn-pay-link {
+      display: inline-block; padding: 14px 36px;
+      background: var(--primary); color: #fff;
+      border-radius: var(--radius-md); text-decoration: none;
+      font-size: 16px; font-weight: 700;
+      transition: all 0.15s;
+    }
+    .btn-pay-link:hover { background: var(--primary-hover); transform: translateY(-1px); }
     .modal-close {
       position: absolute; top: 16px; right: 16px;
       background: none; border: none; font-size: 20px;
@@ -852,7 +860,7 @@
     <div class="modal-card" style="position:relative;">
       <button class="modal-close" id="modalClose">&times;</button>
       <h3>账户充值</h3>
-      <p class="sub">选择充值金额，扫码支付立即到账</p>
+      <p class="sub">选择充值金额，前往爱发电完成支付</p>
 
       <!-- Step 1: Select amount -->
       <div id="topupStep1">
@@ -884,16 +892,23 @@
         </div>
       </div>
 
-      <!-- Step 2: Show QR code -->
+      <!-- Step 2: Show payment link (爱发电) -->
       <div id="topupStep2" style="display:none;">
         <div class="qr-area" id="qrArea">
-          <div id="qrPlaceholder" style="color:var(--gray-400);font-size:14px;">生成支付二维码中...</div>
-          <img id="qrImage" style="display:none;" alt="支付二维码">
-          <div class="hint">请使用微信或支付宝扫码支付</div>
+          <div id="qrPlaceholder" style="color:var(--gray-400);font-size:14px;">创建支付订单中...</div>
+          <div id="payLinkArea" style="display:none;margin-top:8px;">
+            <a id="payUrlLink" href="#" target="_blank" class="btn-pay-link">
+              前往爱发电支付
+            </a>
+            <p style="font-size:12px;color:var(--gray-500);margin-top:12px;line-height:1.6;">
+              点击按钮打开爱发电 → 完成支付后自动到账<br>
+              <span id="payOrderId" style="color:var(--gray-400);font-size:11px;"></span>
+            </p>
+          </div>
           <div id="qrStatus"></div>
         </div>
         <div class="modal-actions">
-          <button class="cancel-btn" id="topupDone">完成</button>
+          <button class="cancel-btn" id="topupCancel2">取消</button>
         </div>
       </div>
     </div>
