@@ -1,0 +1,121 @@
+export const MODELS = [
+  {
+    id: "deepseek-chat",
+    provider: "DeepSeek",
+    name: "DeepSeek-V3",
+    context: "1M",
+    price_input: 1,
+    price_output: 2,
+    status: "active",
+    speed: "fast",
+    description: "DeepSeek 最新版，推理能力强，性价比极高",
+  },
+  {
+    id: "glm-4-flash",
+    provider: "智谱 AI",
+    name: "GLM-4-Flash",
+    context: "128K",
+    price_input: 0,
+    price_output: 0,
+    status: "free",
+    speed: "fast",
+    description: "智谱免费模型，适合日常对话和轻量任务",
+  },
+  {
+    id: "qwen3-27b",
+    provider: "阿里云",
+    name: "Qwen3-27B",
+    context: "128K",
+    price_input: 0.5,
+    price_output: 1,
+    status: "active",
+    speed: "fast",
+    description: "通义千问 Qwen3-27B，性能均衡，适合通用场景",
+  },
+  {
+    id: "gpt-4o-mini",
+    provider: "OpenAI",
+    name: "GPT-4o-mini",
+    context: "128K",
+    price_input: 0.5,
+    price_output: 1,
+    status: "active",
+    speed: "fast",
+    description: "OpenAI 轻量模型，速度快，性价比高",
+  },
+  {
+    id: "qwen2.5-7b",
+    provider: "硅基流动",
+    name: "Qwen2.5-7B",
+    context: "32K",
+    price_input: 0,
+    price_output: 0,
+    status: "free",
+    speed: "medium",
+    description: "硅基流动免费模型，轻量快速，适合简单任务",
+  },
+  {
+    id: "claude-sonnet-4",
+    provider: "Anthropic",
+    name: "Claude Sonnet 4",
+    context: "200K",
+    price_input: 8,
+    price_output: 24,
+    status: "active",
+    speed: "fast",
+    description: "Claude Sonnet 4，高质量的对话和推理能力",
+  },
+  {
+    id: "gemini-2.5-pro",
+    provider: "Google",
+    name: "Gemini 2.5 Pro",
+    context: "1M",
+    price_input: 5,
+    price_output: 15,
+    status: "active",
+    speed: "fast",
+    description: "Gemini 2.5 Pro，超长上下文，强大的多模态能力",
+  },
+];
+
+export function getModel(id) {
+  return MODELS.find((m) => m.id === id);
+}
+
+export const MODEL_ROUTES = {
+  "deepseek-chat": {
+    provider: "deepseek",
+    endpoint: "https://api.deepseek.com/v1/chat/completions",
+    envKey: "DEEPSEEK_API_KEY",
+  },
+  "glm-4-flash": {
+    provider: "zhipu",
+    endpoint: "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+    envKey: "ZHIPU_API_KEY",
+  },
+  "qwen3-27b": {
+    provider: "qwen",
+    endpoint: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+    envKey: "QWEN_API_KEY",
+  },
+  "gpt-4o-mini": {
+    provider: "chatanywhere",
+    endpoint: "https://api.chatanywhere.tech/v1/chat/completions",
+    envKey: "CHATANYWHERE_API_KEY",
+  },
+  "qwen2.5-7b": {
+    provider: "siliconflow",
+    endpoint: "https://api.siliconflow.cn/v1/chat/completions",
+    envKey: "SILICONFLOW_API_KEY",
+  },
+  "claude-sonnet-4": {
+    provider: "qiniu",
+    endpoint: "https://api.qiniu.com/v1/chat/completions",
+    envKey: "QINIU_API_KEY",
+  },
+  "gemini-2.5-pro": {
+    provider: "qiniu",
+    endpoint: "https://api.qiniu.com/v1/chat/completions",
+    envKey: "QINIU_API_KEY",
+  },
+};

@@ -3,83 +3,158 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>价格 - AI 写作助手</title>
+  <title>模型与定价 — AI 聚合 API</title>
+  <meta name="description" content="查看所有 AI 模型的详细定价，包括 DeepSeek、GLM、Qwen、GPT-4o-mini、Claude Sonnet 4 等。">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <nav class="navbar">
+  <!-- Navigation -->
+  <nav class="navbar" id="navbar">
     <div class="navbar-inner">
-      <a href="/" class="navbar-logo">AI 写作助手</a>
-      <ul class="navbar-links">
-        <li><a href="/">首页</a></li>
-        <li><a href="/tools/weekly.html">工具</a></li>
-        <li><a href="/pricing.html">价格</a></li>
-      </ul>
-      <div class="navbar-usage">
-        <span class="usage-badge">剩余 10 次</span>
+      <div class="navbar-left">
+        <a href="/" class="navbar-logo">
+          <span class="navbar-logo-icon">AI</span>
+          AI 聚合 API
+        </a>
+        <ul class="navbar-links" id="navLinks">
+          <li><a href="/">首页</a></li>
+          <li><a href="/pricing.html" class="active">模型与定价</a></li>
+          <li><a href="/tools/weekly.html">在线工具</a></li>
+          <li><a href="console.html">控制台</a></li>
+          <li><a href="playground.html">在线体验</a></li>
+        </ul>
+      </div>
+      <div class="navbar-actions">
+        <a href="login.html" class="btn btn-ghost btn-sm">登录</a>
+        <a href="login.html" class="btn btn-primary btn-sm">免费注册</a>
+        <button class="navbar-toggle" id="navToggle" aria-label="菜单">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
       </div>
     </div>
   </nav>
 
-  <main class="main-content">
+  <!-- Page Hero -->
+  <section class="pricing-page-hero">
     <div class="container">
-      <section class="hero" style="padding-bottom: 20px;">
-        <h1>选择适合你的方案</h1>
-        <p>按需付费，灵活使用</p>
-      </section>
+      <h1>模型与定价</h1>
+      <p>透明定价，按量计费。只为你实际使用的 tokens 付费。</p>
+    </div>
+  </section>
 
-      <div class="pricing-grid">
-        <div class="pricing-card">
-          <span class="badge popular">免费</span>
-          <div class="plan-name">体验版</div>
-          <div class="plan-price">免费</div>
-          <div class="plan-desc">体验 AI 写作的魅力</div>
-          <ul class="plan-features">
-            <li>10 次免费生成</li>
-            <li>所有工具可用</li>
-            <li>基础文案生成</li>
-            <li>无限次修改</li>
-          </ul>
-          <a href="/tools/weekly.html" class="btn btn-primary btn-block">开始使用</a>
+  <!-- Pricing Content -->
+  <section class="section section-white">
+    <div class="container">
+      <!-- Filter Bar -->
+      <div class="filter-bar">
+        <div class="filter-tabs" id="filterTabs">
+          <button class="filter-tab active" data-filter="all">全部</button>
+          <button class="filter-tab" data-filter="deepseek">DeepSeek</button>
+          <button class="filter-tab" data-filter="glm">GLM</button>
+          <button class="filter-tab" data-filter="qwen">Qwen</button>
+          <button class="filter-tab" data-filter="gpt">GPT</button>
+          <button class="filter-tab" data-filter="other">其他</button>
         </div>
-
-        <div class="pricing-card featured">
-          <span class="badge popular">按次</span>
-          <div class="plan-name">按次付费</div>
-          <div class="plan-price">1 <span class="unit">元/次</span></div>
-          <div class="plan-desc">用多少付多少，灵活自由</div>
-          <ul class="plan-features">
-            <li>1 元/次，无上限</li>
-            <li>所有工具可用</li>
-            <li>优先生成速度</li>
-            <li>微信支付</li>
-          </ul>
-          <div class="qr-placeholder">
-            <img src="https://via.placeholder.com/200x200?text=WeChat+Pay+QR" alt="微信收款码">
-          </div>
-          <p style="font-size: 13px; color: var(--gray-400);">微信扫码支付，即时到账</p>
+        <div class="filter-search">
+          <span class="search-icon">&#128269;</span>
+          <input type="text" id="searchInput" placeholder="搜索模型名称..." autocomplete="off">
         </div>
+      </div>
 
-        <div class="pricing-card">
-          <span class="badge coming">即将上线</span>
-          <div class="plan-name">包月套餐</div>
-          <div class="plan-price">19.9 <span class="unit">元/月</span></div>
-          <div class="plan-desc">高频使用首选，超值优惠</div>
-          <ul class="plan-features">
-            <li>100 次/月生成额度</li>
-            <li>所有工具可用</li>
-            <li>优先生成速度</li>
-            <li>专属客服支持</li>
+      <!-- Model Grid -->
+      <div class="model-grid" id="pricingModelGrid">
+        <!-- Cards rendered by JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing Plans -->
+  <section class="section section-alt">
+    <div class="container">
+      <div class="section-header reveal">
+        <span class="section-badge">使用方案</span>
+        <h2>选择适合你的方案</h2>
+        <p>从小规模实验到企业级应用，总有一款适合你。</p>
+      </div>
+      <div class="pricing-preview">
+        <div class="pricing-card reveal">
+          <span class="pricing-badge">免费</span>
+          <div class="pricing-name">免费版</div>
+          <div class="pricing-price">免费</div>
+          <div class="pricing-desc">适合个人开发者体验</div>
+          <ul class="pricing-features">
+            <li>所有模型可用（有限速）</li>
+            <li>每日 100 次调用</li>
+            <li>基础 API 接口</li>
+            <li>社区支持</li>
           </ul>
-          <button class="btn btn-secondary btn-block" disabled>即将上线</button>
+          <a href="login.html" class="btn btn-secondary btn-block">开始使用</a>
+        </div>
+        <div class="pricing-card featured reveal">
+          <span class="pricing-badge">推荐</span>
+          <div class="pricing-name">开发者版</div>
+          <div class="pricing-price">&yen;0.5 <span class="unit">/ 百万 Token</span></div>
+          <div class="pricing-desc">面向个人开发者和独立项目</div>
+          <ul class="pricing-features">
+            <li>所有模型无限制</li>
+            <li>按量计费，用多少付多少</li>
+            <li>每秒 100 次请求上限</li>
+            <li>优先技术支持</li>
+          </ul>
+          <a href="login.html" class="btn btn-primary btn-block">立即开通</a>
+        </div>
+        <div class="pricing-card reveal">
+          <span class="pricing-badge">企业</span>
+          <div class="pricing-name">企业版</div>
+          <div class="pricing-value" style="font-size:24px;font-weight:700;color:var(--gray-900);margin-bottom:8px;">联系我们</div>
+          <div class="pricing-desc">适合团队和企业大规模使用</div>
+          <ul class="pricing-features">
+            <li>专属定制模型路由</li>
+            <li>每秒 10000+ 请求上限</li>
+            <li>私有部署可选</li>
+            <li>专属客户经理 + 技术专家</li>
+          </ul>
+          <a href="login.html" class="btn btn-secondary btn-block">联系我们</a>
         </div>
       </div>
     </div>
-  </main>
+  </section>
 
+  <!-- Footer -->
   <footer class="footer">
     <div class="container">
-      <p>&copy; 2026 AI 写作助手. All rights reserved.</p>
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <h3>AI 聚合 API</h3>
+          <p>一个 API 调用所有 AI 模型。为开发者和企业提供简单、可靠、低成本的 AI API 聚合服务。</p>
+        </div>
+        <div class="footer-col">
+          <h4>产品</h4>
+          <a href="/pricing.html">模型与定价</a>
+          <a href="playground.html">在线体验</a>
+          <a href="playground.html">API 文档</a>
+          <a href="console.html">控制台</a>
+        </div>
+        <div class="footer-col">
+          <h4>支持</h4>
+          <a href="#">常见问题</a>
+          <a href="#">技术文档</a>
+          <a href="#">状态页</a>
+          <a href="#">联系我们</a>
+        </div>
+        <div class="footer-col">
+          <h4>法律</h4>
+          <a href="#">服务条款</a>
+          <a href="#">隐私政策</a>
+          <a href="#">数据安全</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        &copy; 2026 AI 聚合 API. All rights reserved.
+      </div>
     </div>
   </footer>
 

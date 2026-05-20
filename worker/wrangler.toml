@@ -4,10 +4,17 @@ compatibility_date = "2026-05-20"
 workers_dev = true
 
 [vars]
-DEEPSEEK_ENDPOINT = "https://api.deepseek.com/v1/chat/completions"
-MODEL = "deepseek-chat"
-FREE_TRIALS = "10"
+DEEPSEEK_API_KEY = ""
+ZHIPU_API_KEY = ""
+QWEN_API_KEY = ""
+CHATANYWHERE_API_KEY = ""
+SILICONFLOW_API_KEY = ""
+QINIU_API_KEY = ""
 
 [[kv_namespaces]]
 binding = "USAGE"
 id = "3a8286274eec4dc9a2ae2e29b978c717"
+
+[[kv_namespaces]]
+binding = "DATA"
+id = ""
